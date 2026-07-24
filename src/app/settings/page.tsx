@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react';
 import { SCORING_PRESETS, type ScoringPreset } from '@/lib/engine/scoring';
 import { assignTiers } from '@/lib/engine/valuation';
-import { importAdpCsv, importRankingsCsv } from '@/lib/sources/csv-import';
+import {
+  importAdpCsv,
+  importRankingsCsv,
+  makeUniquePlayerId,
+} from '@/lib/sources/csv-import';
 import { searchKey } from '@/lib/sources/types';
 import {
   buildDraftPack,
@@ -12,6 +16,7 @@ import {
   loadPack,
   savePack,
 } from '@/lib/draft-pack';
+import { BAY_ISLANDS } from '@/lib/leagues/bay-islands';
 import type { League, LineupSlot, PlayerCard, Position } from '@/lib/types';
 
 /**
@@ -22,7 +27,8 @@ import type { League, LineupSlot, PlayerCard, Position } from '@/lib/types';
  */
 export default function SettingsPage() {
   const [league, setLeague] = useState<League>(DEFAULT_LEAGUE);
-  const [preset, setPreset] = useState<ScoringPreset>('ppr');
+  // null = custom scoring (e.g. a loaded league preset), not one of the presets.
+  const [preset, setPreset] = useState<ScoringPreset | null>('ppr');
   const [status, setStatus] = useState<{ kind: 'ok' | 'error' | 'info'; text: string } | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [packSummary, setPackSummary] = useState<string | null>(null);
@@ -65,10 +71,13 @@ export default function SettingsPage() {
       return;
     }
 
+    // Ids must be unique even when two players normalize to the same name.
+    const nextId = makeUniquePlayerId();
+
     const players: PlayerCard[] = result.items
       .filter((row) => row.position)
       .map((row) => ({
-        id: `${row.position}-${searchKey(row.playerName)}`,
+        id: nextId(row.position as string, row.playerName),
         name: row.playerName,
         position: row.position as Position,
         team: row.nflTeam ?? null,
@@ -177,6 +186,30 @@ export default function SettingsPage() {
         </p>
       )}
 
+      <section className="card space-y-2">
+        <h2 className="text-sm font-semibold">Load your league</h2>
+        <p className="text-xs text-[var(--muted)]">
+          Bay Islands Fantasy is already encoded from your ESPN settings — scoring,
+          roster, position caps and all. Loading it overwrites the fields below.
+        </p>
+        <button
+          type="button"
+          className="btn-primary w-full"
+          onClick={() => {
+            setLeague({ ...BAY_ISLANDS, draftSlot: league.draftSlot ?? null });
+            setPreset(null);
+            setStatus({
+              kind: 'ok',
+              text:
+                'Bay Islands Fantasy loaded. Note: this league starts ZERO tight ends — ' +
+                'a TE only plays through your single FLEX spot.',
+            });
+          }}
+        >
+          Load Bay Islands Fantasy
+        </button>
+      </section>
+
       <section className="card space-y-3">
         <h2 className="text-sm font-semibold">League</h2>
 
@@ -204,8 +237,14 @@ export default function SettingsPage() {
               type="number"
               min={1}
               max={league.teamCount}
-              value={league.draftSlot}
-              onChange={(e) => updateLeague('draftSlot', Number(e.target.value))}
+              placeholder="Not drawn yet"
+              value={league.draftSlot ?? ''}
+              onChange={(e) =>
+                updateLeague(
+                  'draftSlot',
+                  e.target.value === '' ? null : Number(e.target.value),
+                )
+              }
               className={inputClass}
             />
           </Field>
@@ -404,7 +443,10 @@ const DEFAULT_LEAGUE: League = {
   leagueType: 'redraft',
   teamCount: 12,
   draftType: 'snake',
-  draftSlot: 1,
+  // Deliberately null rather than 1. Defaulting to a seat means the app would
+  // happily build a whole draft board around a slot the user was never
+  // assigned, and they would have no reason to notice.
+  draftSlot: null,
   rosterSlots: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1, DST: 1 },
   benchSize: 6,
   irSlots: 1,

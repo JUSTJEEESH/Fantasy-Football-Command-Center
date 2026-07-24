@@ -295,7 +295,19 @@ export function recommend(input: RecommendationInput): DraftRecommendation {
   const rosterAnalysis = analyzeRoster(roster, league);
   const runs = detectRuns(state, positionOf, { baselineRates: pickRates });
 
-  const eligible = available.filter((p) => !avoidSet.has(p.id));
+  // Positions already at their league maximum are removed from consideration
+  // outright. A capped position is not a low-value pick, it is an illegal one,
+  // and ranking it low would still let it surface once the board thins.
+  const cappedPositions = new Set<Position>();
+  for (const [position, limit] of Object.entries(league.positionLimits ?? {}) as Array<
+    [Position, number]
+  >) {
+    if ((rosterAnalysis.counts[position] ?? 0) >= limit) cappedPositions.add(position);
+  }
+
+  const eligible = available.filter(
+    (p) => !avoidSet.has(p.id) && !cappedPositions.has(p.position),
+  );
 
   if (eligible.length === 0) {
     return emptyRecommendation(currentPick, round, untilNext, now);

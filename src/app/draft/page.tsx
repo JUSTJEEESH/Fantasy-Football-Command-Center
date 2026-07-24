@@ -194,13 +194,18 @@ export default function DraftPage() {
             {pack.league.name} · slot {pack.league.draftSlot} of {pack.league.teamCount}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setTerse((t) => !t)}
-          className="btn-ghost px-3 text-xs"
-        >
-          {terse ? 'Terse' : 'Detailed'}
-        </button>
+        <div className="flex shrink-0 gap-2">
+          <Link href="/draft/slots" className="btn-ghost px-3 text-xs">
+            Seats
+          </Link>
+          <button
+            type="button"
+            onClick={() => setTerse((t) => !t)}
+            className="btn-ghost px-3 text-xs"
+          >
+            {terse ? 'Terse' : 'Detailed'}
+          </button>
+        </div>
       </header>
 
       {freshness && freshness.level !== 'fresh' && (
@@ -480,6 +485,9 @@ function NoPack({ reason }: { reason?: string | null }) {
           {reason}
         </p>
       )}
+      <Link href="/draft/slots" className="btn-ghost mt-3 inline-flex items-center">
+        Plan every draft seat
+      </Link>
       <Link href="/settings" className="btn-primary mt-4 inline-flex items-center">
         Set up my league
       </Link>

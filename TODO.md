@@ -5,7 +5,12 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 315 unit/integration tests + 15 browser tests passing.
+network switched off. 350 unit/integration tests + 19 browser tests passing.
+
+**Your league (Bay Islands Fantasy) is encoded exactly** — scoring, roster,
+position caps, 15 rounds. Load it in Settings with one tap. Draft slot is left
+blank until your Aug 8 party; the slot planner has a plan for all twelve seats
+in the meantime.
 
 ---
 
@@ -65,6 +70,16 @@ network switched off. 315 unit/integration tests + 15 browser tests passing.
 - [x] Rolling AI budget cap, degrading to template prose
 - [ ] Persist `ai_decisions` audit rows (schema exists, writer not wired)
 
+## Your league ✅
+- [x] Bay Islands scoring encoded exactly (6pt pass TD, 1/20 pass yds, -1 INT
+      and fumble, 100yd rush bonus, ESPN DST ladder, no FG-miss penalty)
+- [x] Roster: 8 starters / 7 bench / 15 total, **zero required TE**
+- [x] Position maximums enforced as hard caps (QB 4, RB 8, WR 8, TE 3, K 3, DST 3)
+- [x] Draft slot may be left unset until the order is drawn on Aug 8
+- [x] Slot planner: simulated draft and plan for all 12 seats
+- [x] Slot-agnostic positional landscape (what's true regardless of your seat)
+- [ ] Re-run the planner after your final ADP refresh, closer to Aug 30
+
 ## Phase 9 — UI ✅
 - [x] Dark, mobile-first PWA shell + manifest + bottom nav
 - [x] Draft War Room, fully offline
@@ -76,8 +91,8 @@ network switched off. 315 unit/integration tests + 15 browser tests passing.
 - [ ] Service worker for full offline asset caching
 
 ## Phase 10–11 — Testing & deploy
-- [x] 315 unit + integration tests (integration tests exercise the real SQL)
-- [x] 15 Playwright browser tests at iPhone dimensions, incl. offline draft
+- [x] 350 unit + integration tests (integration tests exercise the real SQL)
+- [x] 19 Playwright browser tests at iPhone dimensions, incl. offline draft
 - [ ] Deployment docs (Vercel + Supabase)
 - [ ] Airplane-mode rehearsal on a real phone
 
@@ -97,6 +112,6 @@ all of them; none is needed for August 30.
 | --- | --- | --- |
 | **ADP data** | Draft Mode's advice quality depends on it entirely | Export a CSV from FantasyPros/Sleeper/ESPN → Settings → Import |
 | **Live egress** | Sandbox blocks all data hosts, so adapters are fixture-tested only | Run `pnpm doctor` locally |
-| **League details** | Scoring, teams, draft slot drive every recommendation | Settings → league wizard |
+| **Draft slot** | The board cannot be built without it | Set it after your Aug 8 party — Draft → Seats |
 | **Projections** | Without them, points are estimated from ADP (labelled as such) | Import a projections CSV, or accept the estimate |
 | `ANTHROPIC_API_KEY` | Only affects wording, never advice | Optional |

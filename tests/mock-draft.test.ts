@@ -21,6 +21,7 @@ import type { DraftState, PlayerCard, Position } from '@/lib/types';
 // ============================================================================
 
 const league = buildMockLeague({ teamCount: 12, draftSlot: 5 });
+const USER_SLOT = 5;   // league.draftSlot is nullable; the sim always has one
 const ROUNDS = 16;
 
 interface SimResult {
@@ -113,7 +114,7 @@ function simulate(opts: SimOptions = {}): SimResult {
   const byId = new Map(players.map((p) => [p.id, p]));
 
   let state = createDraftState({
-    leagueId: league.id, teamCount: 12, rounds: ROUNDS, userSlot: league.draftSlot,
+    leagueId: league.id, teamCount: 12, rounds: ROUNDS, userSlot: USER_SLOT,
   });
 
   let recommendationsFollowed = 0;
@@ -260,7 +261,7 @@ describe('12-team mock draft simulation', () => {
       fillLineup(roster, league.rosterSlots).points;
     const userScore = scoreOf(sim.userRoster);
     const opponentScores = [...sim.allRosters.entries()]
-      .filter(([slot]) => slot !== league.draftSlot)
+      .filter(([slot]) => slot !== USER_SLOT)
       .map(([, roster]) => scoreOf(roster));
     const average = opponentScores.reduce((a, b) => a + b, 0) / opponentScores.length;
 
@@ -273,7 +274,7 @@ describe('12-team mock draft simulation', () => {
     const ranked = [...sim.allRosters.entries()]
       .map(([slot, roster]) => ({ slot, score: scoreOf(roster) }))
       .sort((a, b) => b.score - a.score);
-    const rank = ranked.findIndex((r) => r.slot === league.draftSlot) + 1;
+    const rank = ranked.findIndex((r) => r.slot === USER_SLOT) + 1;
     expect(rank).toBeLessThanOrEqual(6);
   });
 

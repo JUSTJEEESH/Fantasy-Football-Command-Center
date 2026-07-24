@@ -52,15 +52,27 @@ export function useDraft() {
     if (savedState) {
       setState(savedState);
     } else if (loadedPack) {
-      setState(
-        createDraftState({
-          leagueId: loadedPack.league.id,
-          teamCount: loadedPack.league.teamCount,
-          rounds: rosterSize(loadedPack),
-          userSlot: loadedPack.league.draftSlot,
-          draftType: loadedPack.league.draftType === 'auction' ? 'linear' : loadedPack.league.draftType,
-        }),
-      );
+      // A draft cannot start without knowing which slot is yours — the whole
+      // board depends on it. Say so plainly instead of guessing at slot 1.
+      if (loadedPack.league.draftSlot === null) {
+        setPackError(
+          'Your draft slot has not been set yet. Add it in Settings as soon as ' +
+            'your league draws the order — everything else is already configured.',
+        );
+      } else {
+        setState(
+          createDraftState({
+            leagueId: loadedPack.league.id,
+            teamCount: loadedPack.league.teamCount,
+            rounds: rosterSize(loadedPack),
+            userSlot: loadedPack.league.draftSlot,
+            draftType:
+              loadedPack.league.draftType === 'auction'
+                ? 'linear'
+                : loadedPack.league.draftType,
+          }),
+        );
+      }
     }
     setHydrated(true);
   }, []);

@@ -23,6 +23,12 @@ export function createDraftState(params: {
   userSlot: number;
   draftType?: 'snake' | 'linear';
 }): DraftState {
+  if (!Number.isInteger(params.userSlot)) {
+    throw new Error(
+      'A draft slot is required to start a draft. Set it in Settings once your ' +
+        'league draws the order.',
+    );
+  }
   if (params.userSlot < 1 || params.userSlot > params.teamCount) {
     throw new Error(
       `userSlot ${params.userSlot} is outside 1..${params.teamCount}`,

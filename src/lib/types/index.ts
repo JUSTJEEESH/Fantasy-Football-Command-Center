@@ -162,8 +162,13 @@ export const LeagueSettingsSchema = z.object({
   leagueType: z.enum(['redraft', 'keeper', 'dynasty', 'bestball']).default('redraft'),
   teamCount: z.number().int().min(2).max(32),
   draftType: z.enum(['snake', 'linear', 'auction']).default('snake'),
-  /** The user's own draft slot, 1-indexed. */
-  draftSlot: z.number().int().min(1),
+  /**
+   * The user's own draft slot, 1-indexed, or null when the order has not been
+   * drawn yet. Null is a real state, not a missing value: leagues that set the
+   * order manually often do not announce it until shortly before the draft, and
+   * the rest of the configuration is perfectly usable in the meantime.
+   */
+  draftSlot: z.number().int().min(1).nullable(),
   /**
    * Starting lineup composition. Partial by design — a league that uses no
    * superflex simply omits the key rather than writing a zero.
@@ -173,6 +178,12 @@ export const LeagueSettingsSchema = z.object({
   benchSize: z.number().int().min(0).default(6),
   irSlots: z.number().int().min(0).default(1),
   scoring: ScoringSettingsSchema,
+  /**
+   * Hard roster caps per position, where the league sets them. A player at a
+   * capped position cannot legally be drafted, so the engine excludes them
+   * entirely rather than merely ranking them low.
+   */
+  positionLimits: z.partialRecord(PositionSchema, z.number().int().min(0)).optional(),
   /** ADP flavor to prefer when several are available. */
   adpFormat: z.string().default('ppr'),
 });

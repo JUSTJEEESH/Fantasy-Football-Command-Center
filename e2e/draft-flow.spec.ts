@@ -39,9 +39,13 @@ const ADP_CSV = [
   '26,Zulu Defense,PIT,DST1,145.0,12.0',
 ].join('\n');
 
-async function importAdp(page: Page) {
+async function importAdp(page: Page, draftSlot = 1) {
   await page.goto('/settings');
   await page.getByRole('textbox').first().waitFor();
+
+  // A draft slot is required before the war room will open — the app refuses to
+  // assume one. Set it here the same way a user would.
+  await page.getByLabel('Your draft slot', { exact: true }).fill(String(draftSlot));
 
   await page.setInputFiles('input[type="file"] >> nth=0', {
     name: 'adp.csv',
@@ -53,6 +57,64 @@ async function importAdp(page: Page) {
 }
 
 test.use({ viewport: { width: 390, height: 844 } });   // iPhone 14 Pro
+
+test.describe('Bay Islands league', () => {
+  async function loadLeague(page: Page) {
+    await page.goto('/settings');
+    await page.getByRole('button', { name: 'Load Bay Islands Fantasy' }).click();
+    await expect(page.getByText(/ZERO tight ends/)).toBeVisible();
+  }
+
+  test('loads the real league and warns about the zero-TE rule', async ({ page }) => {
+    await loadLeague(page);
+    // Roster fields reflect the actual settings.
+    await expect(page.getByLabel('Teams', { exact: true })).toHaveValue('12');
+    await expect(page.getByLabel('Bench', { exact: true })).toHaveValue('7');
+    // Zero required tight ends — the defining rule of this league.
+    await expect(page.getByLabel('TE', { exact: true })).toHaveValue('0');
+    await expect(page.getByLabel('RB', { exact: true })).toHaveValue('2');
+    await expect(page.getByLabel('FLEX', { exact: true })).toHaveValue('1');
+  });
+
+  test('leaves the draft slot blank until the order is drawn', async ({ page }) => {
+    await loadLeague(page);
+    await expect(page.getByLabel('Your draft slot', { exact: true })).toHaveValue('');
+    await expect(page.getByLabel('Your draft slot', { exact: true })).toHaveAttribute(
+      'placeholder',
+      'Not drawn yet',
+    );
+  });
+
+  test('refuses to open the war room without a draft slot, and says why', async ({ page }) => {
+    await loadLeague(page);
+    await page.getByRole('button', { name: 'Save league' }).click();
+    await page.goto('/draft');
+    await expect(page.getByText(/draft slot has not been set/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Plan every draft seat' })).toBeVisible();
+  });
+
+  test('plans every seat and lets you confirm one', async ({ page }) => {
+    await loadLeague(page);
+    await page.getByRole('button', { name: 'Save league' }).click();
+    await importAdp(page);
+
+    await page.goto('/draft/slots');
+    await expect(page.getByRole('heading', { name: 'Slot planner' })).toBeVisible();
+    // The zero-TE consequence is surfaced without needing a seat.
+    await expect(page.getByText(/starts ZERO tight ends/)).toBeVisible();
+
+    await page.getByRole('button', { name: '7', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Seat 7' })).toBeVisible();
+
+    await page.getByRole('button', { name: /This is my seat/ }).click();
+    await expect(page.getByText(/Drafting from seat 7/)).toBeVisible();
+
+    // And the war room is now usable.
+    await page.goto('/draft');
+    await expect(page.getByText('Draft War Room')).toBeVisible();
+    await expect(page.getByText(/slot 7 of 12/)).toBeVisible();
+  });
+});
 
 test.describe('draft day', () => {
   test('sets up a league and imports ADP', async ({ page }) => {

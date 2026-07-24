@@ -4,6 +4,42 @@ All notable changes to Fantasy Coach. Newest first.
 
 ## [Unreleased]
 
+### 2026-07-24 — Bay Islands Fantasy encoded, and slot planning
+
+**Added**
+- `src/lib/leagues/bay-islands.ts` — the real league, transcribed from the ESPN
+  settings page. Four scoring rules differ from a standard PPR preset and each
+  moves value: passing TDs pay 6 rather than 4, passing yards are 1 per 20,
+  interceptions and lost fumbles cost 1 rather than 2, and a 100-199 yard
+  rushing game pays a 3-point bonus. Kickers have no penalty for a missed field
+  goal, and the defense points-allowed ladder tops out at 5 with no negative
+  brackets.
+- **The league requires zero starting tight ends.** A TE can only reach the
+  lineup through the single FLEX spot, against every RB and WR on the roster.
+  The engine derives the consequence on its own — replacement level at TE lands
+  around TE2, so nearly every tight end in the pool sits below it — and the app
+  states it in words in the positional landscape.
+- Position maximums (QB 4, RB 8, WR 8, TE 3, K 3, DST 3) enforced as hard caps.
+  A capped position is excluded from consideration entirely, because that pick
+  could not legally be made.
+- `draftSlot` may now be null. The order is drawn manually at the Aug 8 party,
+  and the app refuses to assume a seat rather than quietly defaulting to one.
+- **Slot planner** (`/draft/slots`): simulates a full 15-round draft from each
+  of the twelve seats, showing the picks that seat owns, its longest wait, its
+  opening picks, who is realistically available at its first pick, and the
+  roster shape it produces. Confirming a seat configures the war room.
+- Slot-agnostic positional landscape: the scarcity facts that follow from the
+  league's rules and the player pool rather than from where you pick.
+
+**Fixed**
+- CSV import generated player ids from the normalized search key, which strips
+  digits, suffixes and punctuation. Two players who normalize to the same name —
+  the NFL has repeatedly had two active Mike Williamses — collided into one
+  board entry, silently corrupting every roster count downstream. Ids are now
+  guaranteed unique.
+- The settings form defaulted the draft slot to 1, so loading a league preset
+  silently kept a seat the user was never assigned.
+
 ### 2026-07-24 — Phases 3–9: engine, adapters, Coach layer, and the war room
 
 **Added**

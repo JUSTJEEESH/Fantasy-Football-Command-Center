@@ -1,4 +1,5 @@
 import { normalizePosition } from './sleeper';
+import { searchKey } from './types';
 import type { FetchResult, RawAdp, RawProjection, RawRanking, SourceDescriptor } from './types';
 
 // ============================================================================
@@ -368,6 +369,29 @@ export function importProjectionsCsv(
     return { ok: false, items, fetchedAt, warnings, error: 'No usable rows found.' };
   }
   return { ok: true, items, fetchedAt, warnings };
+}
+
+/**
+ * Build stable, guaranteed-unique player ids from imported rows.
+ *
+ * Names alone are not unique. `searchKey` deliberately strips suffixes and
+ * punctuation so "Marvin Harrison Jr." matches "Marvin Harrison" across
+ * sources — but that also means two genuinely different players can normalize
+ * to the same key. The NFL has had several simultaneous Mike Williamses and
+ * Chris Johnsons; a collision silently merges them into one board entry, and
+ * every roster count downstream is then wrong.
+ *
+ * On collision this appends a counter rather than dropping the row, because a
+ * second player with the same name is still a real player you might draft.
+ */
+export function makeUniquePlayerId(): (position: string, name: string) => string {
+  const seen = new Map<string, number>();
+  return (position, name) => {
+    const base = `${position}-${searchKey(name)}`;
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    return count === 0 ? base : `${base}-${count + 1}`;
+  };
 }
 
 /** Strip currency/percent decoration, but refuse to guess at real garbage. */

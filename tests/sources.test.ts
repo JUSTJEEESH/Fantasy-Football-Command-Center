@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { normalizePosition, parseHeight, toRawPlayer } from '@/lib/sources/sleeper';
 import {
+  makeUniquePlayerId,
   importAdpCsv,
   importProjectionsCsv,
   importRankingsCsv,
@@ -200,6 +201,40 @@ describe('ADP import', () => {
     const result = importAdpCsv('Player,ADP\nA,x\nB,y\n');
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/no usable rows/i);
+  });
+});
+
+describe('player id generation', () => {
+  it('gives distinct ids to different players', () => {
+    const nextId = makeUniquePlayerId();
+    expect(nextId('RB', 'Bijan Robinson')).not.toBe(nextId('RB', 'Breece Hall'));
+  });
+
+  it('does not collide two real players who share a name', () => {
+    // The NFL has repeatedly had two active players with the same name. Merging
+    // them into one board entry silently corrupts every roster count that
+    // follows, so a collision must produce a second id, not a duplicate.
+    const nextId = makeUniquePlayerId();
+    const first = nextId('WR', 'Mike Williams');
+    const second = nextId('WR', 'Mike Williams');
+    expect(second).not.toBe(first);
+  });
+
+  it('does not collide names that differ only in stripped characters', () => {
+    // searchKey removes digits, suffixes and punctuation to match across
+    // sources, which means the normalized key alone is not unique.
+    const nextId = makeUniquePlayerId();
+    expect(nextId('RB', 'Player One')).not.toBe(nextId('RB', 'Player 1'));
+  });
+
+  it('keeps the first id stable and readable', () => {
+    const nextId = makeUniquePlayerId();
+    expect(nextId('RB', 'Bijan Robinson')).toBe('RB-bijanrobinson');
+  });
+
+  it('separates players of different positions with the same name', () => {
+    const nextId = makeUniquePlayerId();
+    expect(nextId('QB', 'Josh Allen')).not.toBe(nextId('WR', 'Josh Allen'));
   });
 });
 
