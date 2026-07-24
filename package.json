@@ -16,7 +16,10 @@
     "ingest": "tsx scripts/ingest.ts",
     "doctor": "tsx scripts/doctor.ts",
     "test:e2e": "playwright test",
-    "test:all": "vitest run && playwright test"
+    "test:all": "vitest run && playwright test",
+    "build:static": "tsx scripts/build-static.ts",
+    "preview:static": "tsx scripts/serve-static.ts",
+    "test:e2e:ci": "playwright test --config=playwright.ci.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

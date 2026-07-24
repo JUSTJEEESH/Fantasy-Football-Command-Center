@@ -20,3 +20,8 @@ data/local/
 # playwright
 test-results/
 playwright-report/
+
+# static export
+out/
+.api-parked/
+.next-static/

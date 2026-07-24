@@ -4,6 +4,35 @@ All notable changes to Fantasy Coach. Newest first.
 
 ## [Unreleased]
 
+### 2026-07-24 — Deployed to GitHub Pages
+
+**Added**
+- Static export build (`pnpm build:static`) and a GitHub Actions workflow that
+  tests, builds and publishes to GitHub Pages on every push to `main`. The site
+  is only deployed if the whole suite passes first.
+- `pnpm preview:static` — a dependency-free server that serves the export under
+  its real `/<repo>/` sub-path, because serving it from the domain root hides
+  precisely the bugs that break a Pages deployment.
+- CI runs the browser suite against **both** deployments — the server build and
+  the static export — so a Pages-specific breakage cannot pass as green.
+- CI spins up a real Postgres so the integration tests exercise actual SQL.
+
+**Fixed** (all three would have shipped a broken or blank site)
+- No `.nojekyll`: GitHub Pages runs Jekyll by default, which silently ignores
+  directories beginning with an underscore. That would have stripped `_next/`
+  and served nothing but 404s, with no error explaining why.
+- The web app manifest and its icon pointed at `/`, which resolves outside the
+  project sub-path — the installed app would have loaded no icon and launched
+  to the wrong URL. The manifest is now generated with the base path applied.
+- The CI config built both bundles concurrently into the same `.next`
+  directory. They clobbered each other and produced a server build that started
+  cleanly and then misbehaved. The builds are now explicitly sequenced, static
+  first, so `.next` is left in the state `pnpm start` expects.
+
+**Note**
+- The news feed needs a server and a database, so it is unavailable on the
+  static deployment and says exactly that rather than rendering an empty list.
+
 ### 2026-07-24 — Bay Islands Fantasy encoded, and slot planning
 
 **Added**

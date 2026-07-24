@@ -33,8 +33,24 @@ export default function NewsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // The static build (GitHub Pages) has no server, so there is no news API to
+    // call. Say that outright rather than firing a request that 404s and
+    // rendering something that could be mistaken for "nothing happened".
+    if (process.env.NEXT_PUBLIC_STATIC_EXPORT === '1') {
+      setPayload({
+        events: [],
+        fetchedAt: null,
+        degraded:
+          'This is the static build, which has no server or database, so no news ' +
+          'is being collected. Draft mode is unaffected — it runs entirely on your ' +
+          'device. Run the app locally or deploy it with a database for the news feed.',
+      });
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
-    fetch('/api/news')
+    fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/news`)
       .then((res) => {
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
         return res.json();

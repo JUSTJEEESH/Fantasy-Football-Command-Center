@@ -52,6 +52,24 @@ of guessing.
 
 ---
 
+## Live site
+
+The draft assistant is deployed to GitHub Pages and works on your phone:
+
+**https://justjeeesh.github.io/Fantasy-Football-Command-Center/**
+
+Add it to your home screen (Safari → Share → Add to Home Screen) and it behaves
+like an app, including offline.
+
+That deployment is fully static, which is only possible because the draft path
+was built to run on your device. What it does **not** have is a server or a
+database, so the news feed is unavailable there and says so plainly. Everything
+else — league setup, CSV import, the slot planner, the war room, recommendations
+— works exactly as it does locally.
+
+Every push to `main` runs the full suite (350 unit/integration tests, 20 browser
+tests against both the server and static builds) and only publishes if it passes.
+
 ## Quick start
 
 ```bash
@@ -98,6 +116,8 @@ draft day.
 | `pnpm test` | Unit + integration tests (315) |
 | `pnpm test:e2e` | Browser tests at iPhone dimensions (15) |
 | `pnpm test:all` | Both |
+| `pnpm build:static` | Static export for GitHub Pages, into `./out` |
+| `pnpm preview:static` | Serve that export under its real sub-path |
 | `pnpm db:migrate` | Apply migrations (idempotent) |
 | `pnpm ingest [players\|news\|all]` | Fetch from sources into Postgres |
 | `pnpm doctor` | Live connectivity + parser sanity check |

@@ -5,7 +5,6 @@ import { NavBar } from '@/components/NavBar';
 export const metadata: Metadata = {
   title: 'Fantasy Coach',
   description: 'Personal AI fantasy football analyst, draft assistant, and news engine.',
-  manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     title: 'Coach',

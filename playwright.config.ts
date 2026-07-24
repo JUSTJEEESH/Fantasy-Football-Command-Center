@@ -1,4 +1,8 @@
 import { defineConfig } from '@playwright/test';
+import { resolveChromiumPath } from './e2e/chromium-path';
+
+// Undefined in normal CI, where Playwright manages its own browser download.
+const executablePath = resolveChromiumPath();
 
 export default defineConfig({
   testDir: './e2e',
@@ -8,8 +12,7 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: 'http://127.0.0.1:3111',
-    // The product is used on a phone; test it as one.
-    launchOptions: { executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' },
+    launchOptions: executablePath ? { executablePath } : {},
     trace: 'off',
   },
   webServer: {
