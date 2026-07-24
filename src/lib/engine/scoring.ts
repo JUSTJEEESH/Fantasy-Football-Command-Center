@@ -43,6 +43,13 @@ const BASE: Record<string, number> = {
   dst_block: 2,
 };
 
+/**
+ * The final bracket uses a large finite number rather than `Infinity` on
+ * purpose: scoring settings are serialized to JSON (into the database and into
+ * the offline draft pack), and `JSON.stringify(Infinity)` produces `null`,
+ * which then fails validation on reload. A silently-discarded draft pack on
+ * draft day is not a failure mode worth risking for a nicer-looking constant.
+ */
 const DST_PA_TIERS = [
   { maxPointsAllowed: 0, points: 10 },
   { maxPointsAllowed: 6, points: 7 },
@@ -50,7 +57,7 @@ const DST_PA_TIERS = [
   { maxPointsAllowed: 20, points: 1 },
   { maxPointsAllowed: 27, points: 0 },
   { maxPointsAllowed: 34, points: -1 },
-  { maxPointsAllowed: Infinity, points: -4 },
+  { maxPointsAllowed: 9999, points: -4 },
 ];
 
 export const SCORING_PRESETS = {

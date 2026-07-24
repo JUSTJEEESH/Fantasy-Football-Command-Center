@@ -16,3 +16,7 @@ next-env.d.ts
 coverage/
 .vercel
 data/local/
+
+# playwright
+test-results/
+playwright-report/

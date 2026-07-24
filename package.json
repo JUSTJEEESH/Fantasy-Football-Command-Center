@@ -14,7 +14,9 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "ingest": "tsx scripts/ingest.ts",
-    "doctor": "tsx scripts/doctor.ts"
+    "doctor": "tsx scripts/doctor.ts",
+    "test:e2e": "playwright test",
+    "test:all": "vitest run && playwright test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
@@ -25,6 +27,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^22.19.2",
     "@types/pg": "^8.15.6",
     "@types/react": "^19.2.7",
