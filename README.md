@@ -113,8 +113,8 @@ draft day.
 | --- | --- |
 | `pnpm dev` | Development server |
 | `pnpm build` / `pnpm start` | Production build and serve |
-| `pnpm test` | Unit + integration tests (315) |
-| `pnpm test:e2e` | Browser tests at iPhone dimensions (15) |
+| `pnpm test` | Unit + integration tests (350) |
+| `pnpm test:e2e` | Browser tests at iPhone dimensions (20) |
 | `pnpm test:all` | Both |
 | `pnpm build:static` | Static export for GitHub Pages, into `./out` |
 | `pnpm preview:static` | Serve that export under its real sub-path |
