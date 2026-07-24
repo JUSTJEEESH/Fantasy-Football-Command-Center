@@ -43,11 +43,12 @@ jobs:
       INGEST_NETWORK_ENABLED: '0'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
+      # No version pinned here on purpose: package.json's `packageManager`
+      # field is the single source of truth, and specifying both makes
+      # pnpm/action-setup fail with a version conflict.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -92,12 +93,21 @@ jobs:
     name: Build static site
     needs: test
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
+    # configure-pages needs these to turn Pages on for the repo the first time,
+    # so the site does not require a manual settings change to go live.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # No version pinned here on purpose: package.json's `packageManager`
+      # field is the single source of truth, and specifying both makes
+      # pnpm/action-setup fail with a version conflict.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -114,6 +124,12 @@ jobs:
           BASE_PATH: /${{ github.event.repository.name }}
 
       - uses: actions/configure-pages@v5
+        with:
+          # Enable Pages on first run rather than failing with "Pages has not
+          # been enabled". Note: GitHub Pages on a PRIVATE repository requires
+          # a paid plan — on the free plan this step fails until the repo is
+          # made public.
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
