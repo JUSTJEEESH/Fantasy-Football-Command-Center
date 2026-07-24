@@ -168,18 +168,18 @@ jobs:
         with:
           path: ./out
 
-      # Fallback when the Actions token is not permitted to create the Pages
-      # site (it returns "Resource not accessible by integration"). Publishing
-      # the built site to a `gh-pages` branch needs only push access, which the
-      # token always has, and serves the same URL once Pages is pointed at
-      # either source. Belt and braces: whichever route is available wins.
-      - name: Publish to gh-pages branch (fallback)
-        if: steps.pages.outcome == 'failure'
+
+      # Published unconditionally, not as a fallback.
+      #
+      # GitHub Pages can be sourced either from a branch or from an Actions
+      # artifact, and the workflow cannot read which one the repository is set
+      # to. Publishing only one of them means the site silently stops updating
+      # whenever the setting does not match: with the source set to a branch,
+      # `configure-pages` succeeds, the artifact path is taken, `deploy-pages`
+      # fails, and the branch is never refreshed — which is exactly what
+      # happened. Doing both is cheap and works under either setting.
+      - name: Publish to gh-pages branch
         run: |
-          echo "::warning title=Pages API unavailable::Publishing to the \
-          gh-pages branch instead. If the site is not live, set \
-          Settings → Pages → Source to 'Deploy from a branch' → gh-pages \
-          (or 'GitHub Actions', which this workflow also supports)."
           cd out
           touch .nojekyll
           git init -q
@@ -215,5 +215,21 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
+      # Only succeeds when the repository's Pages source is "GitHub Actions".
+      # If it is set to a branch instead, this legitimately cannot deploy — the
+      # gh-pages push in the previous job has already published the same files,
+      # so a failure here must not fail the run.
       - id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v4
+
+      - name: Note which route published the site
+        run: |
+          if [ "${{ steps.deployment.outcome }}" = "success" ]; then
+            echo "Published via the GitHub Actions Pages source."
+          else
+            echo "::notice title=Published from the gh-pages branch::The Actions \
+            Pages source is not enabled for this repository, so the site was \
+            published by pushing to the gh-pages branch instead. Both routes \
+            serve the same URL; no action needed."
+          fi
