@@ -278,10 +278,13 @@ test.describe('draft day', () => {
     await expect(page.getByText('VOR').first()).toBeVisible();
   });
 
-  test('news page says news is missing rather than showing nothing', async ({ page }) => {
+  test('news page is populated from the data pack, on the server build too', async ({ page }) => {
+    // The pack is generated at build time and served from /public, so both the
+    // server build and the static export render the same feed.
     await page.goto('/news');
+    await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
     await expect(
-      page.getByText(/No fantasy-relevant news has been ingested|News is unavailable/),
+      page.getByText(/merged into \d+ events|could not be loaded|No news was collected/),
     ).toBeVisible();
   });
 });

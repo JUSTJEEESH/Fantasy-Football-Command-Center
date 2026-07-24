@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # The deployment is static, so "fresh news" means "rebuilt recently".
+  # Every three hours keeps the feed current without running a server.
+  schedule:
+    - cron: '0 */3 * * *'
   # Lets you redeploy from the Actions tab without pushing a commit.
   workflow_dispatch:
 
@@ -72,6 +76,13 @@ jobs:
       # Order matters: both invoke `next build` against the same `.next`
       # directory, so the static export runs first and the server build last,
       # leaving `.next` in the state `pnpm start` expects.
+      # Fixture data so the browser tests exercise a populated feed without
+      # depending on live sources being up.
+      - name: Build fixture data pack
+        run: pnpm build:data --fixtures
+        env:
+          ALLOW_EMPTY_DATA: '1'
+
       - name: Build static export
         run: pnpm build:static
 
@@ -114,6 +125,14 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # Fetches real players and real news. The runner has network access, which
+      # is what lets a static deployment ship populated. Fails the job if every
+      # source is unreachable rather than quietly publishing an empty site.
+      - name: Fetch live data
+        run: pnpm build:data
+        env:
+          INGEST_NETWORK_ENABLED: '1'
 
       - name: Build static export
         # Derives the base path from the repo name, so a rename or a fork does

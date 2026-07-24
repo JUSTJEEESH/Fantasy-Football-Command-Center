@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic RSS fixture, structured exactly like a real NFL news feed.
+
+  The player names are deliberately fictional. This file exists to exercise the
+  parser, the deduplication and the classifier offline; inventing plausible news
+  about real players — even in a test file — is precisely the failure mode this
+  product is built to avoid, and a fixture that leaked into a build would do
+  exactly that.
+-->
+<rss version="2.0">
+  <channel>
+    <title>Fixture NFL Wire</title>
+    <item>
+      <title><![CDATA[Marcus Fielding suffers torn ACL, out for the season]]></title>
+      <description><![CDATA[<p>The running back was carted off during Wednesday's practice and will be placed on injured reserve.</p>]]></description>
+      <link>https://example.invalid/1</link>
+      <pubDate>Fri, 24 Jul 2026 18:30:00 GMT</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Marcus Fielding tears ACL and is out for the season, sources say]]></title>
+      <description><![CDATA[A season-ending knee injury ends the back's year before it starts.]]></description>
+      <link>https://example.invalid/2</link>
+      <pubDate>Fri, 24 Jul 2026 19:05:00 GMT</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Dorian Vance named starting quarterback for Week 1]]></title>
+      <description><![CDATA[The second-year passer wins the job outright after taking first-team reps all camp.]]></description>
+      <link>https://example.invalid/3</link>
+      <pubDate>Fri, 24 Jul 2026 16:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Elias Thorne did not practice Wednesday with a hamstring issue]]></title>
+      <description><![CDATA[The receiver is considered day to day.]]></description>
+      <link>https://example.invalid/4</link>
+      <pubDate>Fri, 24 Jul 2026 15:10:00 GMT</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Rhys Calloway traded to a new team in a surprise deal]]></title>
+      <description><![CDATA[The veteran back is dealt for a conditional pick.]]></description>
+      <link>https://example.invalid/5</link>
+      <pubDate>Fri, 24 Jul 2026 14:20:00 GMT</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Jonah Priest benched, loses starting job to a rookie]]></title>
+      <description><![CDATA[Coaches confirmed the change after a poor preseason showing.]]></description>
+      <link>https://example.invalid/6</link>
+      <pubDate>Fri, 24 Jul 2026 13:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Silas Boone expected to see an expanded role and more goal line work]]></title>
+      <description><![CDATA[The coordinator described him as the lead back going into the opener.]]></description>
+      <link>https://example.invalid/7</link>
+      <pubDate>Fri, 24 Jul 2026 12:30:00 GMT</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[NFL power rankings: where all 32 teams stand entering camp]]></title>
+      <description><![CDATA[Our staff ranks every roster.]]></description>
+      <link>https://example.invalid/8</link>
+      <pubDate>Fri, 24 Jul 2026 11:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Best bets and odds boost for the season opener]]></title>
+      <description><![CDATA[Betting preview for Week 1.]]></description>
+      <link>https://example.invalid/9</link>
+      <pubDate>Fri, 24 Jul 2026 10:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Elias Thorne returned to practice in full, no injury designation]]></title>
+      <description><![CDATA[He is expected to play in the opener.]]></description>
+      <link>https://example.invalid/10</link>
+      <pubDate>Fri, 24 Jul 2026 20:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

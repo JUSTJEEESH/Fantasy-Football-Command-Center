@@ -49,6 +49,12 @@ const STOPWORDS = new Set([
   'will', 'would', 'could', 'should', 'may', 'might', 'this', 'that', 'these',
   'nfl', 'football', 'report', 'reports', 'says', 'said', 'per', 'via', 'news',
   'update', 'updates', 'week', 'game', 'season', 'team', 'teams',
+  // Attribution boilerplate. "sources say", "according to", "sources tell" are
+  // the most common filler in NFL headlines and carry no information about
+  // which event is being described — counting them as content pushed two
+  // reports of the same injury just under the merge threshold.
+  'say', 'saying', 'source', 'sources', 'according', 'tells', 'told',
+  'confirms', 'confirmed', 'announces', 'announced',
 ]);
 
 export function tokenize(text: string): Set<string> {
@@ -87,7 +93,17 @@ export function itemSimilarity(
 ): number {
   const titleScore = similarity(a.title, b.title);
   if (!a.summary || !b.summary) return titleScore;
-  return 0.75 * titleScore + 0.25 * similarity(a.summary, b.summary);
+
+  // The summary can only ever RAISE the score, never lower it.
+  //
+  // Two outlets reporting one ACL tear wrote "carted off during Wednesday's
+  // practice" and "a season-ending knee injury" — near-zero overlap. Averaging
+  // that against a clear 0.50 title match dragged the pair below threshold and
+  // published the same story twice, which is precisely the duplication this
+  // product exists to remove. The headline is the event's identity; the body is
+  // corroborating evidence, so it gets a vote but not a veto.
+  const summaryScore = similarity(a.summary, b.summary);
+  return Math.max(titleScore, 0.75 * titleScore + 0.25 * summaryScore);
 }
 
 /**

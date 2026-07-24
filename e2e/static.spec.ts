@@ -40,9 +40,11 @@ test('static build: full draft flow works', async ({ page, context }) => {
   await expect(page.getByRole('heading', { name: 'Slot planner' })).toBeVisible();
   await expect(page.getByText(/starts ZERO tight ends/)).toBeVisible();
 
-  // News degrades honestly with no server
+  // The feed is populated from data baked in at build time.
   await page.goto(`${SITE}/news/`);
-  await expect(page.getByText(/static build, which has no server/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
+  await expect(page.getByText(/merged into \d+ events/)).toBeVisible();
+  await expect(page.getByText('Needs your attention')).toBeVisible();
 
   // Navigation between pages
   await page.getByRole('link', { name: /Players/ }).click();

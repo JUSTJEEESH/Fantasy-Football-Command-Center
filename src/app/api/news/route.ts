@@ -16,7 +16,14 @@ interface EventRow {
 }
 
 /**
- * Recent fantasy-relevant news events.
+ * Recent fantasy-relevant news events, from the database.
+ *
+ * NOTE: the UI no longer reads this route. Both deployments render the build-
+ * time data pack (`/data/news.json`) instead, because the static deployment has
+ * no server and a single code path is worth more than a second one that only
+ * runs in half the environments. This endpoint remains as the programmatic view
+ * of the ingested database for a server deployment, and is covered by the
+ * integration tests.
  *
  * Every failure mode returns an explicit `degraded` message rather than an
  * empty list, because an empty list reads as "nothing happened" — which would

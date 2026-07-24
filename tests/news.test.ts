@@ -111,6 +111,30 @@ describe('clustering (§5)', () => {
     expect(clusters).toHaveLength(3);
   });
 
+  it('merges two outlets whose blurbs differ but headlines agree', () => {
+    // Regression: averaging in a near-zero summary similarity dragged a clear
+    // 0.50 title match below threshold, and the same ACL tear was published as
+    // two separate events.
+    const clusters = clusterNews([
+      item('espn', 'Marcus Fielding suffers torn ACL, out for the season', {
+        summary: "The running back was carted off during Wednesday's practice.",
+      }),
+      item('cbs', 'Marcus Fielding tears ACL and is out for the season, sources say', {
+        summary: 'A season-ending knee injury ends the back\'s year before it starts.',
+      }),
+    ]);
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0]!.items).toHaveLength(2);
+  });
+
+  it('still keeps genuinely different stories apart when summaries differ', () => {
+    const clusters = clusterNews([
+      item('espn', 'Marcus Fielding suffers torn ACL', { summary: 'Carted off.' }),
+      item('cbs', 'Dorian Vance signs a contract extension', { summary: 'Terms undisclosed.' }),
+    ]);
+    expect(clusters).toHaveLength(2);
+  });
+
   it('collapses exact syndicated reprints', () => {
     const headline = 'Sample Back placed on injured reserve';
     const clusters = clusterNews([
@@ -205,6 +229,26 @@ describe('classification (§6, §7)', () => {
     expect(result.playerDirection).toBe('STRONG_POSITIVE');
   });
 
+  it('recognizes the common "named starting <position>" phrasing', () => {
+    // "named starter" alone missed the way this is actually written, and a
+    // starting-job win was scoring as unclassified noise.
+    for (const headline of [
+      'Dorian Vance named starting quarterback for Week 1',
+      'Dorian Vance named the starting running back',
+      'Dorian Vance wins the starting job',
+      'Dorian Vance sits atop the depth chart',
+    ]) {
+      const result = classify([['espn', headline]]);
+      expect(result.eventType).toBe('depth_chart');
+      expect(result.playerDirection).toBe('STRONG_POSITIVE');
+    }
+  });
+
+  it('does not let a positive depth-chart phrase invert a demotion', () => {
+    const result = classify([['espn', 'Jonah Priest benched, loses starting job to a rookie']]);
+    expect(result.playerDirection).toBe('STRONG_NEGATIVE');
+  });
+
   it('recognizes a benching as strongly negative', () => {
     const result = classify([['espn', 'Sample Back benched, loses starting job']]);
     expect(result.playerDirection).toBe('STRONG_NEGATIVE');
@@ -256,6 +300,26 @@ describe('classification (§6, §7)', () => {
     const star = classify([['espn', 'Sample Back suffers a hamstring injury']], { importance: 1 });
     const scrub = classify([['espn', 'Sample Back suffers a hamstring injury']], { importance: 0 });
     expect(star.impactScore).toBeGreaterThan(scrub.impactScore);
+  });
+
+  it('spreads confidence across a meaningful range', () => {
+    // A number that reads the same on every item is decoration, not a
+    // measurement. One weak source must land far below four strong ones.
+    const lone = classify([['blog', 'Sample Back suffers a hamstring injury']], {
+      reliability: 0.5,
+    });
+    const many = classify(
+      [
+        ['espn', 'Sample Back suffers a hamstring injury'],
+        ['cbs', 'Sample Back suffers a hamstring injury'],
+        ['yahoo', 'Sample Back suffers a hamstring injury'],
+        ['pft', 'Sample Back suffers a hamstring injury'],
+      ],
+      { reliability: 0.9 },
+    );
+    expect(many.confidence - lone.confidence).toBeGreaterThan(0.2);
+    expect(lone.confidence).toBeLessThan(0.7);
+    expect(many.confidence).toBeGreaterThan(0.8);
   });
 
   it('never claims confidence it has not earned', () => {

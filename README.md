@@ -71,10 +71,11 @@ Every successful run also attaches the built site as a downloadable
 `fantasy-coach-site` artifact.
 
 That deployment is fully static, which is only possible because the draft path
-was built to run on your device. What it does **not** have is a server or a
-database, so the news feed is unavailable there and says so plainly. Everything
-else — league setup, CSV import, the slot planner, the war room, recommendations
-— works exactly as it does locally.
+was built to run on your device. The news feed works there too: real headlines
+are fetched, deduplicated and scored **at build time** (the CI runner has
+network access) and shipped as JSON, with the build time shown on every screen.
+A rebuild runs every three hours, so the feed is current without a server —
+and it never claims to be fresher than its last build.
 
 Every push to `main` runs the full suite (350 unit/integration tests, 20 browser
 tests against both the server and static builds) and only publishes if it passes.
@@ -122,9 +123,10 @@ draft day.
 | --- | --- |
 | `pnpm dev` | Development server |
 | `pnpm build` / `pnpm start` | Production build and serve |
-| `pnpm test` | Unit + integration tests (350) |
-| `pnpm test:e2e` | Browser tests at iPhone dimensions (20) |
+| `pnpm test` | Unit + integration tests (366) |
+| `pnpm test:e2e` | Browser tests at iPhone dimensions (29) |
 | `pnpm test:all` | Both |
+| `pnpm build:data` | Fetch real players + news into `public/data` (`--fixtures` for offline) |
 | `pnpm build:static` | Static export for GitHub Pages, into `./out` |
 | `pnpm preview:static` | Serve that export under its real sub-path |
 | `pnpm db:migrate` | Apply migrations (idempotent) |

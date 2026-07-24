@@ -81,9 +81,14 @@ const RULES: Rule[] = [
     terms: ['activated', 'cleared to play', 'expected to play', 'will play',
             'off injured reserve', 'return to action'] },
 
+  // NOTE: every phrase here must be unambiguously positive. A bare "starting
+  // job" would also match "loses starting job" and, because this rule scores
+  // higher than the benching rule, would invert the meaning of a demotion.
   { eventType: 'depth_chart', baseScore: 75, direction: 'STRONG_POSITIVE',
-    terms: ['named starter', 'will start', 'takes over as', 'promoted to starter',
-            'wins starting job', 'first-team reps'] },
+    terms: ['named starter', 'named starting', 'named the starting', 'will start',
+            'takes over as', 'promoted to starter', 'wins starting job',
+            'wins the starting job', 'gets the start', 'atop the depth chart',
+            'first-team reps', 'first team reps'] },
   { eventType: 'depth_chart', baseScore: 70, direction: 'STRONG_NEGATIVE',
     terms: ['benched', 'demoted', 'loses starting job', 'lost the job',
             'second string', 'backup role', 'healthy scratch'] },
@@ -275,14 +280,32 @@ function detectPositions(text: string): Position[] {
   return found;
 }
 
+/**
+ * Confidence that the event is real and correctly characterized.
+ *
+ * Calibrated to actually spread across its range. An earlier version added a
+ * flat +0.15 and let corroboration reach 1.0 at three sources, so anything
+ * widely reported pinned to the 0.95 ceiling — every item in the feed displayed
+ * the same number, which tells the reader nothing and reads as decoration
+ * rather than a measurement.
+ *
+ * Roughly: a lone aggregator report lands near 0.45, a single strong national
+ * outlet near 0.6, and the same story from four independent outlets near 0.9.
+ * It never reaches 1.0, because a keyword classifier is never certain.
+ */
 function computeConfidence(
   reliability: number,
   distinctSources: number,
   ageHours: number | null,
 ): number {
-  const corroboration = Math.min(1, 0.55 + 0.15 * (distinctSources - 1));
-  const recency = ageHours === null ? 0.85 : ageHours <= 24 ? 1 : ageHours <= 72 ? 0.9 : 0.75;
-  return Math.round(Math.min(0.95, reliability * corroboration * recency + 0.15) * 100) / 100;
+  // Independent corroboration is the strongest signal, with diminishing
+  // returns — the third outlet adds much less than the second.
+  const corroboration = 1 - Math.pow(0.55, Math.max(0, distinctSources - 1));
+  const base = 0.45 + 0.25 * reliability + 0.3 * corroboration;
+
+  const recency = ageHours === null ? 0.92 : ageHours <= 24 ? 1 : ageHours <= 72 ? 0.95 : 0.85;
+
+  return Math.round(Math.min(0.93, base * recency) * 100) / 100;
 }
 
 function hoursSince(timestamp: string | undefined, now: Date): number | null {

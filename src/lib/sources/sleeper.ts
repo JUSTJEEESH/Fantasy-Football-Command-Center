@@ -285,6 +285,7 @@ export function toRawPlayer(
     status: raw.status ?? undefined,
     injuryStatus: raw.injury_status ?? null,
     depthChartOrder: raw.depth_chart_order ?? undefined,
+    searchRank: raw.search_rank ?? undefined,
   };
 }
 

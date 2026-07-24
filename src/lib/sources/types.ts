@@ -61,6 +61,12 @@ export interface RawPlayer {
   status?: string;
   injuryStatus?: string | null;
   depthChartOrder?: number;
+  /**
+   * The source's own popularity/relevance ordering, where it publishes one.
+   * Explicitly NOT an average draft position — it reflects a single platform's
+   * users, so it is carried under its own name and never presented as ADP.
+   */
+  searchRank?: number;
   sourceTimestamp?: string;
 }
 

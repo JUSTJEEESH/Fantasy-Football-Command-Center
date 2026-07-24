@@ -25,3 +25,6 @@ playwright-report/
 out/
 .api-parked/
 .next-static/
+
+# generated at build time, never committed
+public/data/

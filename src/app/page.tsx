@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { CoachBar } from '@/components/CoachBar';
 import { describePackFreshness, loadPack, type DraftPack } from '@/lib/draft-pack';
+import { Briefing } from '@/components/Briefing';
+import { loadNewsPack, packFreshness, type NewsPack } from '@/lib/static-data';
 import { parseCommand } from '@/lib/coach/intents';
 import { HELP_TEXT } from '@/lib/coach/intents';
 
@@ -15,15 +17,21 @@ import { HELP_TEXT } from '@/lib/coach/intents';
  */
 export default function HomePage() {
   const [pack, setPack] = useState<DraftPack | null>(null);
+  const [news, setNews] = useState<NewsPack | null>(null);
+  const [newsLoading, setNewsLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setPack(loadPack());
     setHydrated(true);
+    loadNewsPack()
+      .then(setNews)
+      .finally(() => setNewsLoading(false));
   }, []);
 
   const freshness = describePackFreshness(pack);
+  const newsFreshness = packFreshness(news);
   const daysToDraft = daysUntil(DRAFT_DAY);
 
   const handleCommand = (text: string) => {
@@ -64,11 +72,24 @@ export default function HomePage() {
     <div className="space-y-4">
       <header className="pt-2">
         <h1 className="text-3xl font-black tracking-tight">Coach</h1>
-        <p className="text-sm text-[var(--muted)]">
-          {daysToDraft > 0
-            ? `${daysToDraft} day${daysToDraft === 1 ? '' : 's'} until your draft.`
-            : 'Draft day.'}
-        </p>
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-sm text-[var(--muted)]">
+            {daysToDraft > 0
+              ? `${daysToDraft} day${daysToDraft === 1 ? '' : 's'} until your draft.`
+              : 'Draft day.'}
+          </p>
+          {newsFreshness && (
+            <span
+              className={`text-xs ${
+                newsFreshness.level === 'stale'
+                  ? 'text-[var(--danger)]'
+                  : 'text-[var(--muted)]'
+              }`}
+            >
+              {newsFreshness.label}
+            </span>
+          )}
+        </div>
       </header>
 
       <CoachBar onSubmit={handleCommand} placeholder='Say "Coach"…' />
@@ -86,6 +107,16 @@ export default function HomePage() {
             dismiss
           </button>
         </div>
+      )}
+
+      {newsLoading ? (
+        <div className="card animate-pulse">
+          <div className="h-3 w-28 rounded bg-[var(--surface-2)]" />
+          <div className="mt-3 h-4 w-full rounded bg-[var(--surface-2)]" />
+          <div className="mt-1.5 h-4 w-3/4 rounded bg-[var(--surface-2)]" />
+        </div>
+      ) : (
+        <Briefing pack={news} />
       )}
 
       {hydrated && <ReadinessCard pack={pack} freshnessLabel={freshness?.label} freshnessLevel={freshness?.level} />}
