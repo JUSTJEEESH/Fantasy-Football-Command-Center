@@ -61,7 +61,12 @@ Every push to `main` publishes to:
 Add it to your home screen (Safari → Share → Add to Home Screen) and it behaves
 like an app, including offline.
 
-If the URL 404s, check Settings → Pages → Source is set to **GitHub Actions**.
+**One-time setup:** go to **Settings → Pages → Source** and pick either
+**`Deploy from a branch` → `gh-pages` → `/ (root)`** (the workflow publishes that
+branch on every green build) or **GitHub Actions** (also supported). GitHub's API
+does not permit the Actions token to turn Pages on by itself, so this single
+toggle is the one manual step.
+
 Every successful run also attaches the built site as a downloadable
 `fantasy-coach-site` artifact.
 
