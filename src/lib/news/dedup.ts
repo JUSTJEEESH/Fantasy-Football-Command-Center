@@ -72,6 +72,25 @@ export function similarity(a: string, b: string): number {
 }
 
 /**
+ * Similarity between two news items, weighted toward the headline.
+ *
+ * The headline is where the event identity lives ("X tears ACL"); the summary
+ * is where outlets legitimately diverge — one describes the cart, another the
+ * knee. Scoring title and summary as one blob lets that divergence drown out
+ * the agreement, and real reports of the same injury scored ~0.35 that way,
+ * below any sensible threshold. Weighting the title fixes it without making
+ * the threshold so loose that unrelated stories merge.
+ */
+export function itemSimilarity(
+  a: { title: string; summary?: string },
+  b: { title: string; summary?: string },
+): number {
+  const titleScore = similarity(a.title, b.title);
+  if (!a.summary || !b.summary) return titleScore;
+  return 0.75 * titleScore + 0.25 * similarity(a.summary, b.summary);
+}
+
+/**
  * Cluster near-duplicate news items.
  *
  * `threshold` is the similarity at which two headlines are treated as the same
@@ -106,20 +125,18 @@ export function clusterNews(
 
   for (const group of exactGroups) {
     const representative = group[0]!;
-    const text = `${representative.title} ${representative.summary ?? ''}`;
 
     const match = clusters.find((cluster) => {
       if (!withinWindow(cluster, representative, windowHours)) return false;
-      const canonicalText = `${cluster.canonicalTitle} ${cluster.items[0]?.summary ?? ''}`;
-      return similarity(canonicalText, text) >= threshold;
+      return itemSimilarity(clusterAnchor(cluster), representative) >= threshold;
     });
 
     if (match) {
-      const canonicalText = `${match.canonicalTitle} ${match.items[0]?.summary ?? ''}`;
+      const anchor = clusterAnchor(match);
       for (const item of group) {
         match.items.push(item);
         match.similarities.push(
-          Math.round(similarity(canonicalText, `${item.title} ${item.summary ?? ''}`) * 1000) / 1000,
+          Math.round(itemSimilarity(anchor, item) * 1000) / 1000,
         );
       }
       updateWindow(match);
@@ -184,6 +201,14 @@ function splitByTimeWindow(
 
   if (untimed.length > 0) runs[0]!.push(...untimed);
   return runs;
+}
+
+/** The item a cluster is compared against: its canonical headline and summary. */
+function clusterAnchor(cluster: NewsCluster): { title: string; summary?: string } {
+  return {
+    title: cluster.canonicalTitle,
+    summary: cluster.items[0]?.summary,
+  };
 }
 
 function withinWindow(

@@ -5,7 +5,7 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 308 unit tests + 15 browser tests passing.
+network switched off. 315 unit/integration tests + 15 browser tests passing.
 
 ---
 
@@ -53,7 +53,7 @@ network switched off. 308 unit tests + 15 browser tests passing.
 - [x] `pnpm doctor` live connectivity + parser-sanity check
 - [!] **Live verification of Sleeper + RSS adapters** — blocked by sandbox egress.
       Run `pnpm doctor` on your own machine; it does the real requests.
-- [ ] Ingestion writer (`pnpm ingest`) persisting to Postgres
+- [x] Ingestion writer (`pnpm ingest`) persisting to Postgres, verified against local PG
 - [ ] Trend detection over the ADP/ranking time series
 - [ ] Scheduled ingestion (cron route)
 
@@ -76,7 +76,7 @@ network switched off. 308 unit tests + 15 browser tests passing.
 - [ ] Service worker for full offline asset caching
 
 ## Phase 10–11 — Testing & deploy
-- [x] 308 unit tests
+- [x] 315 unit + integration tests (integration tests exercise the real SQL)
 - [x] 15 Playwright browser tests at iPhone dimensions, incl. offline draft
 - [ ] Deployment docs (Vercel + Supabase)
 - [ ] Airplane-mode rehearsal on a real phone
