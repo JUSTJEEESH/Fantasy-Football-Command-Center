@@ -1,0 +1,139 @@
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Lets you redeploy from the Actions tab without pushing a commit.
+  workflow_dispatch:
+
+# Never deploy a broken build: the site is only published if the whole suite
+# passes first (see `needs: test` below).
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    # The integration tests exercise real SQL, so they need a real Postgres.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fantasy_coach
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/fantasy_coach
+      # Ingestion must never reach the network from CI.
+      INGEST_NETWORK_ENABLED: '0'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm db:migrate
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit and integration tests
+        run: pnpm test
+
+      - name: Install browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Order matters: both invoke `next build` against the same `.next`
+      # directory, so the static export runs first and the server build last,
+      # leaving `.next` in the state `pnpm start` expects.
+      - name: Build static export
+        run: pnpm build:static
+
+      - name: Build server bundle
+        run: pnpm build
+
+      - name: Browser tests (server build and static export)
+        run: pnpm exec playwright test --config=playwright.ci.config.ts
+
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  build:
+    name: Build static site
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build static export
+        # Derives the base path from the repo name, so a rename or a fork does
+        # not silently produce a site with broken asset URLs.
+        run: pnpm build:static
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out
+
+  deploy:
+    name: Deploy to GitHub Pages
+    # Pull requests are tested and built, but only main is published.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

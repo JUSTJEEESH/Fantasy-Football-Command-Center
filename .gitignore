@@ -1,0 +1,27 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# secrets — never commit
+.env
+.env.*
+!.env.example
+
+.DS_Store
+*.log
+coverage/
+.vercel
+data/local/
+
+# playwright
+test-results/
+playwright-report/
+
+# static export
+out/
+.api-parked/
+.next-static/

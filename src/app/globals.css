@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Dark-first by design. This gets used in a dim room at a draft party, held at
+ * arm's length, and often one-handed.
+ */
+:root {
+  --bg: #0a0c10;
+  --surface: #14181f;
+  --surface-2: #1c222c;
+  --border: #2a323f;
+  --text: #e8edf5;
+  --muted: #8b97a8;
+  --accent: #35d07f;
+  --warn: #f5a524;
+  --danger: #f04b4b;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  /* Never rubber-band the whole page during a draft. */
+  overscroll-behavior-y: none;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  /* Respect the iPhone notch and home indicator. */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Stop iOS zooming the viewport when a text input is focused. */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4;
+  }
+
+  /* Every interactive element clears the 44px iOS touch target minimum. */
+  .btn {
+    @apply min-h-[44px] rounded-xl px-4 font-medium transition-colors
+           active:scale-[0.98] disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply btn bg-[var(--accent)] text-[#08130c];
+  }
+
+  .btn-ghost {
+    @apply btn border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)];
+  }
+
+  .tag {
+    @apply inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
+  }
+}
+
+/* Claim kinds are visually distinct so an inference can never read as a fact. */
+.claim-FACT { @apply border-l-2 border-[var(--accent)] pl-3; }
+.claim-REPORT { @apply border-l-2 border-sky-400 pl-3; }
+.claim-INFERENCE { @apply border-l-2 border-[var(--muted)] pl-3; }
+.claim-RECOMMENDATION { @apply border-l-2 border-[var(--warn)] pl-3; }
+.claim-UNCERTAINTY { @apply border-l-2 border-dashed border-[var(--danger)] pl-3; }
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
