@@ -1,0 +1,46 @@
+{
+  "name": "fantasy-coach",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FANTASY COACH — personal AI fantasy football intelligence platform",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "ingest": "tsx scripts/ingest.ts",
+    "doctor": "tsx scripts/doctor.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.0",
+    "next": "^16.2.11",
+    "pg": "^8.16.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.2",
+    "@types/pg": "^8.15.6",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18",
+    "tsx": "^4.20.7",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
+  }
+}
