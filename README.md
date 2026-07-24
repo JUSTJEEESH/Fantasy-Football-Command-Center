@@ -54,12 +54,19 @@ of guessing.
 
 ## Live site
 
-The draft assistant is deployed to GitHub Pages and works on your phone:
+Once GitHub Pages is enabled for this repository, every push to `main` publishes
+to:
 
 **https://justjeeesh.github.io/Fantasy-Football-Command-Center/**
 
 Add it to your home screen (Safari → Share → Add to Home Screen) and it behaves
 like an app, including offline.
+
+**To enable it:** Settings → Pages → Source: **GitHub Actions**, then re-run the
+workflow. Note that GitHub Pages on a **private** repository requires GitHub Pro
+or higher — on the free plan the repository has to be public first. Until then,
+each successful run attaches the built site as a downloadable `fantasy-coach-site`
+artifact, and `pnpm dev` runs the whole thing locally.
 
 That deployment is fully static, which is only possible because the draft path
 was built to run on your device. What it does **not** have is a server or a

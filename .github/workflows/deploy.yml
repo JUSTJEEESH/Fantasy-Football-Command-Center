@@ -123,22 +123,54 @@ jobs:
         env:
           BASE_PATH: /${{ github.event.repository.name }}
 
-      - uses: actions/configure-pages@v5
+      # Always publish the built site as a plain downloadable artifact, whether
+      # or not Pages is available. Without this, a repository-level Pages
+      # setting would leave you with no way to get at a build that succeeded.
+      - name: Upload site as a downloadable artifact
+        uses: actions/upload-artifact@v4
         with:
-          # Enable Pages on first run rather than failing with "Pages has not
-          # been enabled". Note: GitHub Pages on a PRIVATE repository requires
-          # a paid plan — on the free plan this step fails until the repo is
-          # made public.
+          name: fantasy-coach-site
+          path: ./out
+          retention-days: 30
+
+      # Tries to turn Pages on. This fails with "Resource not accessible by
+      # integration" when Pages is unavailable for the repository — most often
+      # because it is PRIVATE, and Pages on a private repo needs GitHub Pro or
+      # higher. That is a repository setting, not a build problem, so it must
+      # not fail the run and leave main permanently red.
+      - id: pages
+        name: Configure GitHub Pages
+        continue-on-error: true
+        uses: actions/configure-pages@v5
+        with:
           enablement: true
 
+      - name: Explain how to finish enabling Pages
+        if: steps.pages.outcome == 'failure'
+        run: |
+          echo "::warning title=GitHub Pages is not enabled::The site built \
+          successfully but could not be published. Enable it under \
+          Settings → Pages → Source: GitHub Actions. Pages on a PRIVATE \
+          repository requires GitHub Pro or higher; on the free plan, make the \
+          repository public first. The built site is attached to this run as \
+          the 'fantasy-coach-site' artifact in the meantime."
+
       - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outcome == 'success'
         with:
           path: ./out
 
+    outputs:
+      pages_enabled: ${{ steps.pages.outcome }}
+
   deploy:
     name: Deploy to GitHub Pages
-    # Pull requests are tested and built, but only main is published.
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Pull requests are tested and built, but only main is published — and only
+    # when Pages is actually available for this repository.
+    if: |
+      github.ref == 'refs/heads/main'
+      && github.event_name != 'pull_request'
+      && needs.build.outputs.pages_enabled == 'success'
     needs: build
     runs-on: ubuntu-latest
 
