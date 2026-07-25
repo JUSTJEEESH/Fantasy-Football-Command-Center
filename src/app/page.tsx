@@ -121,6 +121,10 @@ export default function HomePage() {
 
       {hydrated && <ReadinessCard pack={pack} freshnessLabel={freshness?.label} freshnessLevel={freshness?.level} />}
 
+      {/* Settings has to be reachable from a WORKING app, not only from the
+          "not ready" card — which vanishes the moment a board exists, taking
+          the only path to Settings with it. A user with a healthy board had no
+          way to change their league, link ESPN, or rebuild. */}
       <div className="grid grid-cols-2 gap-2">
         <Link href="/draft" className="btn-primary flex items-center justify-center">
           Draft mode
@@ -130,6 +134,9 @@ export default function HomePage() {
         </Link>
         <Link href="/players" className="btn-ghost flex items-center justify-center">
           Player board
+        </Link>
+        <Link href="/settings" className="btn-ghost flex items-center justify-center">
+          Settings
         </Link>
       </div>
 

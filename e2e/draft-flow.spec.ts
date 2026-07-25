@@ -288,3 +288,14 @@ test.describe('draft day', () => {
     ).toBeVisible();
   });
 });
+
+test('Settings stays reachable from Home after a board exists', async ({ page }) => {
+  // The "Set up" path vanishes with the not-ready card the moment a board is
+  // built, and for a while it was the ONLY path — a healthy app had no way to
+  // change the league, link ESPN, or rebuild the board. Found by the user, not
+  // by a test, which is why this one now exists.
+  await importAdp(page);
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+});
