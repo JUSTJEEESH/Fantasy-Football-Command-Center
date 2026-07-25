@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { closePool, isDbConfigured, query } from '@/lib/db/client';
 import { buildEvents, seedNewsSources } from '@/lib/ingest/pipeline';
 import { fingerprint } from '@/lib/news/dedup';
+import { DEFAULT_RSS_SOURCES } from '@/lib/sources/rss';
 import type { RawNewsItem } from '@/lib/sources/types';
 
 // ============================================================================
@@ -12,6 +13,9 @@ import type { RawNewsItem } from '@/lib/sources/types';
 // Skipped automatically when DATABASE_URL is not configured.
 // ============================================================================
 
+/** Whatever feed sits first in the registry — never a hardcoded name. */
+const FEED_KEY = DEFAULT_RSS_SOURCES[0]!.key;
+
 const dbAvailable = isDbConfigured();
 const suite = dbAvailable ? describe : describe.skip;
 
@@ -21,9 +25,20 @@ suite('ingestion pipeline against Postgres', () => {
   beforeAll(async () => {
     await seedNewsSources();
 
+    // Look the source up by whatever the registry actually seeds, rather than
+    // by a hardcoded key. A feed URL dying and being replaced is routine — when
+    // ESPN's was, this test broke on a name it had no business knowing, and it
+    // broke only in CI, because a dev database still had the retired row from
+    // an earlier seed. Clean-database CI was right and the local pass was the
+    // lie.
     const sources = await query<{ id: string }>(
-      `SELECT id FROM news_sources WHERE key = 'espn_nfl'`,
+      `SELECT id FROM news_sources WHERE key = $1`,
+      [FEED_KEY],
     );
+    expect(
+      sources[0],
+      `seedNewsSources() did not seed '${FEED_KEY}', the first entry in DEFAULT_RSS_SOURCES`,
+    ).toBeDefined();
     sourceId = sources[0]!.id;
 
     // Two players, one of whom shares a last name with nobody so linking is
@@ -76,23 +91,34 @@ suite('ingestion pipeline against Postgres', () => {
   it('seeds the source registry idempotently', async () => {
     await seedNewsSources();
     const rows = await query<{ count: string }>(
-      `SELECT count(*)::text AS count FROM news_sources WHERE key = 'espn_nfl'`,
+      `SELECT count(*)::text AS count FROM news_sources WHERE key = $1`,
+      [DEFAULT_RSS_SOURCES[0]!.key],
     );
     expect(Number(rows[0]!.count)).toBe(1);
+  });
+
+  it('seeds every source in the registry', async () => {
+    // Guards the seam that just broke: the registry and the database drifting
+    // apart without anything noticing.
+    const rows = await query<{ key: string }>(`SELECT key FROM news_sources`);
+    const seeded = new Set(rows.map((r) => r.key));
+    for (const source of DEFAULT_RSS_SOURCES) {
+      expect(seeded.has(source.key), `'${source.key}' was not seeded`).toBe(true);
+    }
   });
 
   it('writes a canonical event from several reports and keeps every source', async () => {
     const published = new Date().toISOString();
     const items: RawNewsItem[] = [
       {
-        sourceKey: 'espn_nfl',
+        sourceKey: FEED_KEY,
         title: 'Testcase Runningback suffers a torn ACL, out for the season',
         summary: 'The running back was carted off during Wednesday practice.',
         url: 'https://example.com/1',
         publishedAt: published,
       },
       {
-        sourceKey: 'espn_nfl',
+        sourceKey: FEED_KEY,
         title: 'Testcase Runningback tears ACL and is out for the season',
         summary: 'A season-ending knee injury for the running back.',
         url: 'https://example.com/2',
@@ -129,7 +155,7 @@ suite('ingestion pipeline against Postgres', () => {
     // The same injury to a player nobody drafts must not score as a crisis.
     const published = new Date().toISOString();
     const item: RawNewsItem = {
-      sourceKey: 'espn_nfl',
+      sourceKey: FEED_KEY,
       title: 'Testcase Wideout suffers a torn ACL, out for the season',
       publishedAt: published,
     };
@@ -160,7 +186,7 @@ suite('ingestion pipeline against Postgres', () => {
 
   it('drops noise rather than storing it', async () => {
     const item: RawNewsItem = {
-      sourceKey: 'espn_nfl',
+      sourceKey: FEED_KEY,
       title: 'Testcase power rankings: where every team stands',
       publishedAt: new Date().toISOString(),
     };
@@ -175,7 +201,7 @@ suite('ingestion pipeline against Postgres', () => {
 
   it('does not double-store an item seen twice', async () => {
     const item: RawNewsItem = {
-      sourceKey: 'espn_nfl',
+      sourceKey: FEED_KEY,
       title: 'Testcase Wideout named the starting receiver',
       publishedAt: new Date().toISOString(),
     };
