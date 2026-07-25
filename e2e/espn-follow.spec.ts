@@ -134,16 +134,32 @@ test.describe('following the draft live', () => {
   });
 
 
-  test('the war room applies ESPN picks, and halts honestly on an unknown player', async ({
+  test('halts honestly when ESPN picks a player the board does not know', async ({
     page,
   }) => {
-    // First response: one pick, by a player id the fixture board cannot know.
+    // A board WITH ids, but ESPN's second pick is an id not on it.
+    const shipped = {
+      generatedAt: new Date().toISOString(),
+      ok: true,
+      sources: [{ key: 'sleeper', name: 'Sleeper', ok: true, itemCount: 2 }],
+      season: 2026,
+      players: [
+        { id: 'RB-a', name: 'Alpha Back', position: 'RB', team: 'DET', adp: 1.5, espnId: 111 },
+        { id: 'RB-b', name: 'Bravo Back', position: 'RB', team: 'ATL', adp: 2.5, espnId: 222 },
+      ],
+    };
+    await page.route('**/data/players.json', (route: Route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(shipped) }),
+    );
     await page.route(ESPN_LEAGUE, (route: Route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(
-          leagueBody([{ overallPickNumber: 1, playerId: 999001, teamId: 4 }]),
+          leagueBody([
+            { overallPickNumber: 1, playerId: 111, teamId: 4 },
+            { overallPickNumber: 2, playerId: 999001, teamId: 7 },
+          ]),
         ),
       }),
     );
@@ -154,17 +170,29 @@ test.describe('following the draft live', () => {
     await page.getByRole('button', { name: /^Save league$/i }).click();
 
     await page.goto('/draft');
-    await expect(page.getByRole('heading', { name: 'Draft War Room' })).toBeVisible();
-
-    // The panel only exists because a league id is saved.
-    await expect(page.getByText('Follow ESPN draft')).toBeVisible();
     await page.getByRole('button', { name: 'Follow', exact: true }).click();
 
-    // Fixture players carry no ESPN ids, so the sync must halt at pick 1 with
-    // instructions — not guess, not crash, not silently skip.
-    await expect(page.getByText(/pick 1 is a player not on your board/i)).toBeVisible({
+    // Pick 1 applies; pick 2 halts with instructions — not a guess, not a
+    // crash, not a silent skip that would corrupt the snake math.
+    await expect(page.getByText(/pick 2 is a player not on your board/i)).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByText(/Record that pick manually/i)).toBeVisible();
+  });
+
+  test('refuses to offer Follow on a board that has no ESPN ids at all', async ({
+    page,
+  }) => {
+    // The fixture pack carries no ids — the same shape as a pack built before
+    // ids shipped, or a CSV import. Sync would halt on pick 1 forever, so the
+    // panel must say that instead of offering a button guaranteed to fail.
+    await buildBoard(page);
+    await page.getByLabel('Your draft slot', { exact: true }).fill('3');
+    await page.getByPlaceholder('e.g. 1234567').fill('1234567');
+    await page.getByRole('button', { name: /^Save league$/i }).click();
+
+    await page.goto('/draft');
+    await expect(page.getByText(/board has no ESPN player ids/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Follow', exact: true })).toHaveCount(0);
   });
 });

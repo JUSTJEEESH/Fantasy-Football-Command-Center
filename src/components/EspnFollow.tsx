@@ -105,6 +105,26 @@ export function EspnFollow({
 
   if (!league.espnLeagueId) return null;
 
+  // A board with no ESPN ids at all cannot match a single pick — sync would
+  // halt at pick 1 and never advance. Two real ways to get here: a pack built
+  // before ids were shipped, or a CSV-imported board (CSVs carry no ids).
+  // Offering the Follow button anyway would be promising a feature that is
+  // guaranteed to fail; saying which board this is and how to fix it is not.
+  const linkable = players.some((p) => p.espnId !== undefined);
+  if (!linkable) {
+    return (
+      <div className="card space-y-1">
+        <h2 className="text-sm font-semibold">Follow ESPN draft</h2>
+        <p className="text-xs text-[var(--muted)]">
+          Your board has no ESPN player ids, so picks from the ESPN room cannot be
+          matched. If you built the board before ids shipped, rebuild it once —
+          Settings → <span className="font-medium">Use the shipped player board</span>.
+          A CSV-imported board cannot carry ids; manual entry works as always.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="card space-y-2">
       <div className="flex items-center justify-between gap-3">
