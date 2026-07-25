@@ -256,11 +256,16 @@ async function buildNews(players: PlayerPackEntry[]): Promise<NewsPack> {
 
     if (classified.classification === 'NOISE') continue;
 
-    // An item naming no fantasy-relevant player is only worth showing if it is
-    // genuinely big on its own terms — a coaching change, a major trade. A
-    // low-scoring item with nobody attached is a story about somebody you will
-    // never start, and it is what makes a feed feel like filler.
-    if (linkedPlayers.length === 0 && classified.impactScore < 45) continue;
+    // Some event types are inherently about one person: an injury, a benching,
+    // a change in workload. If we cannot say WHO, the item cannot be acted on —
+    // "a defensive end went on injured reserve" is not fantasy news, it is
+    // noise wearing the shape of news. Team-level events (coaching changes,
+    // trades) can still stand without a named fantasy player.
+    const INDIVIDUAL_EVENTS = ['injury', 'practice', 'depth_chart', 'usage', 'return'];
+    if (linkedPlayers.length === 0 && INDIVIDUAL_EVENTS.includes(classified.eventType)) {
+      continue;
+    }
+    if (linkedPlayers.length === 0 && classified.impactScore < 55) continue;
 
     events.push({
       id: `evt-${events.length + 1}-${cluster.canonicalTitle.slice(0, 24).replace(/\W+/g, '-').toLowerCase()}`,

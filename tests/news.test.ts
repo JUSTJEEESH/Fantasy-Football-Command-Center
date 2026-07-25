@@ -332,6 +332,31 @@ describe('classification (§6, §7)', () => {
     expect(result.confidence).toBeLessThanOrEqual(0.95);
   });
 
+  it('scores a headline event above one merely mentioned in the body', () => {
+    // A profile piece whose blurb references a past ACL tear must not score as
+    // a fresh season-ending injury. The headline states the event; the body
+    // often references one that already happened.
+    const inHeadline = classify([['espn', 'Sample Back suffers a torn ACL']]);
+    const inBodyOnly = classifyCluster(
+      clusterNews([
+        item('espn', 'Sample Back reflects on a long road back', {
+          summary: 'He described the rehab after last year\'s torn ACL.',
+          publishedAt: '2026-08-26T18:00:00.000Z',
+        }),
+      ])[0]!,
+      { sourceReliability: 0.85, playerImportance: 0.8, now: new Date('2026-08-26T20:00:00.000Z') },
+    );
+
+    expect(inBodyOnly.impactScore).toBeLessThan(inHeadline.impactScore * 0.7);
+    expect(inBodyOnly.signals.join(' ')).toMatch(/context, not the headline/);
+  });
+
+  it('recognizes being cleared to return', () => {
+    const result = classify([['espn', 'Sample Passer fully cleared for training camp']]);
+    expect(result.eventType).toBe('return');
+    expect(result.playerDirection).toBe('STRONG_POSITIVE');
+  });
+
   it('admits when no rule matched instead of guessing an impact', () => {
     const result = classify([['espn', 'Sample Back spoke to reporters on Tuesday afternoon']]);
     expect(result.eventType).toBe('other');

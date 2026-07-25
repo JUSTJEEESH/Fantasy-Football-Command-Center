@@ -78,8 +78,9 @@ const RULES: Rule[] = [
             'no injury designation'] },
 
   { eventType: 'return', baseScore: 60, direction: 'STRONG_POSITIVE',
-    terms: ['activated', 'cleared to play', 'expected to play', 'will play',
-            'off injured reserve', 'return to action'] },
+    terms: ['activated', 'cleared to play', 'fully cleared', 'cleared for',
+            'expected to play', 'will play', 'off injured reserve',
+            'return to action'] },
 
   // NOTE: every phrase here must be unambiguously positive. A bare "starting
   // job" would also match "loses starting job" and, because this rule scores
@@ -187,14 +188,36 @@ export function classifyCluster(
     };
   }
 
-  // Strongest matching rule wins; rules are ordered most-severe first within
-  // each event type, so an ACL tear never gets scored as a generic "injury".
-  let best: Rule | null = null;
-  for (const rule of RULES) {
-    const hit = rule.terms.find((term) => text.includes(term));
-    if (!hit) continue;
-    signals.push(`${rule.eventType}: "${hit}"`);
-    if (!best || rule.baseScore > best.baseScore) best = rule;
+  // Match the HEADLINE first, and only fall back to the body.
+  //
+  // Scoring against title-plus-summary as one blob let background context drive
+  // the rating: a human-interest piece about a quarterback whose blurb happened
+  // to mention his past ACL tear scored 98/100 as a fresh season-ending injury.
+  // The headline states what happened; the body often references what already
+  // did. A body-only match is still worth reporting, but at a discount and
+  // labelled as context rather than as the event.
+  const headline = ` ${normalizeText(cluster.canonicalTitle)} `;
+
+  const matchIn = (haystack: string): Rule | null => {
+    let found: Rule | null = null;
+    for (const rule of RULES) {
+      const hit = rule.terms.find((term) => haystack.includes(term));
+      if (!hit) continue;
+      signals.push(`${rule.eventType}: "${hit}"`);
+      if (!found || rule.baseScore > found.baseScore) found = rule;
+    }
+    return found;
+  };
+
+  let best = matchIn(headline);
+  let contextOnly = false;
+
+  if (!best) {
+    best = matchIn(text);
+    if (best) {
+      contextOnly = true;
+      signals.push('matched on article context, not the headline — scored down');
+    }
   }
 
   if (!best) {
@@ -228,10 +251,18 @@ export function classifyCluster(
   const recencyFactor =
     ageHours === null ? 0.85 : ageHours <= 6 ? 1 : ageHours <= 24 ? 0.92 : ageHours <= 72 ? 0.8 : 0.6;
 
+  // A rule that only fired on the body describes context, not the event.
+  const contextFactor = contextOnly ? 0.55 : 1;
+
   const impactScore = Math.round(
     Math.min(
       100,
-      best.baseScore * importanceFactor * reliabilityFactor * corroborationFactor * recencyFactor,
+      best.baseScore *
+        importanceFactor *
+        reliabilityFactor *
+        corroborationFactor *
+        recencyFactor *
+        contextFactor,
     ),
   );
 
