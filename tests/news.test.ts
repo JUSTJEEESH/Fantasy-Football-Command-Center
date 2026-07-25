@@ -395,6 +395,70 @@ describe('player linking', () => {
     expect(links.find((l) => l.playerId === 'p1')!.matchType).toBe('full');
   });
 
+  describe('a surname preceded by someone else\'s first name', () => {
+    // One real headline from a real build produced two confident wrong links:
+    //   "What signing Jeremiah Franklin, waiving Jimmy Kibble means for the
+    //    Patriots"
+    // "Franklin" matched Troy Franklin — a different Franklin — and "means"
+    // matched Bub Means as an ordinary English word. Neither player is in the
+    // story.
+    const roster = buildPlayerNameIndex(
+      [
+        { id: 'f1', name: 'Troy Franklin', position: 'WR' },
+        { id: 'm1', name: 'Bub Means', position: 'WR' },
+        { id: 'r1', name: 'Sample Runningback', position: 'RB' },
+      ],
+      searchKey,
+    );
+
+    it('does not link a different person who shares the surname', () => {
+      const links = linkPlayers('Patriots sign Jeremiah Franklin', roster, searchKey);
+      expect(links).toHaveLength(0);
+    });
+
+    it('does not link a surname that is an ordinary word mid-sentence', () => {
+      const links = linkPlayers(
+        'What signing Jeremiah Franklin, waiving Jimmy Kibble means for the Patriots',
+        roster,
+        searchKey,
+      );
+      expect(links).toHaveLength(0);
+    });
+
+    it('still links a bare surname when nothing precedes it', () => {
+      const links = linkPlayers('Franklin returns to practice', roster, searchKey);
+      expect(links.map((l) => l.playerId)).toEqual(['f1']);
+    });
+
+    it('still links after a position code', () => {
+      // "Chiefs WR Franklin" is the normal way a beat writer refers to a player.
+      expect(
+        linkPlayers('Broncos WR Franklin cleared', roster, searchKey).map((l) => l.playerId),
+      ).toEqual(['f1']);
+    });
+
+    it('still links after punctuation', () => {
+      expect(
+        linkPlayers('On Thursday, Franklin practiced in full', roster, searchKey)
+          .map((l) => l.playerId),
+      ).toEqual(['f1']);
+    });
+
+    it('still links after an ordinary lowercase word', () => {
+      expect(
+        linkPlayers('Reports say Franklin is active', roster, searchKey).map((l) => l.playerId),
+      ).toEqual(['f1']);
+    });
+
+    it('never blocks a full-name match', () => {
+      // Full names are exact and must be unaffected by the surname guard.
+      expect(
+        linkPlayers('Rookie WR Troy Franklin impresses', roster, searchKey)
+          .map((l) => l.playerId),
+      ).toEqual(['f1']);
+    });
+  });
+
   describe('team defenses are not linkable by team name', () => {
     // Real headlines from a real build. Adding defenses to the draft board put
     // team names into this index, and every one of these "linked a player" —

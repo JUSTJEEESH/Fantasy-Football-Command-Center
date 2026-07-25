@@ -419,6 +419,75 @@ export function buildPlayerNameIndex(
  * attaching an ACL tear to the wrong Johnson is exactly the class of error
  * this product must never make.
  */
+/**
+ * Per-token facts from the ORIGINAL text that normalization throws away:
+ * whether a token was capitalized, and whether punctuation followed it.
+ * Token boundaries match `normalizeText` exactly, so indices line up.
+ */
+interface RawToken {
+  capitalized: boolean;
+  /** A comma, period, colon etc. immediately after — so not part of a name. */
+  trailingPunct: boolean;
+  /** The token itself, original case. */
+  text: string;
+}
+
+function rawTokenInfo(text: string): RawToken[] {
+  const stripped = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const tokens: RawToken[] = [];
+  const re = /[A-Za-z0-9]+/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(stripped)) !== null) {
+    const after = stripped.slice(match.index + match[0].length).match(/^\s*(.)/);
+    tokens.push({
+      text: match[0],
+      capitalized: /^[A-Z]/.test(match[0]),
+      trailingPunct: after ? /[,;:.!?()\-—"'\u2019]/.test(after[1]!) : true,
+    });
+  }
+  return tokens;
+}
+
+/**
+ * Codes that legitimately precede a surname without being a first name.
+ * "Chiefs WR Franklin" must still link; "Jeremiah Franklin" must not.
+ */
+const NAME_PREFIX_CODES = new Set([
+  'QB', 'RB', 'WR', 'TE', 'K', 'DST', 'DEF', 'FB', 'OL', 'DL', 'LB', 'CB',
+  'DB', 'S', 'DE', 'DT', 'OT', 'OG', 'C', 'G', 'P', 'LS', 'EDGE', 'NFL',
+]);
+
+/**
+ * Reject a surname match whose preceding word is somebody else's first name.
+ *
+ * The reasoning is exact rather than heuristic: if the preceding token were
+ * THIS player's first name, the full-name pass would already have matched and
+ * consumed it. So a capitalized, unconsumed word immediately before a surname
+ * is evidence the story is about a different person who happens to share the
+ * surname — or about no person at all.
+ *
+ * Both failures this catches shipped in a real build, from one headline:
+ *   "What signing Jeremiah Franklin, waiving Jimmy Kibble means for the
+ *    Patriots"
+ * linked Troy Franklin (a different Franklin entirely) and Bub Means (on the
+ * ordinary English word "means", sitting right after "Kibble"). Attaching a
+ * transaction to two players it never mentioned is precisely the error this
+ * product is not allowed to make, so an uncertain match is dropped rather than
+ * downgraded.
+ */
+function precededByAnotherPersonsName(raw: RawToken[], index: number): boolean {
+  if (index === 0) return false;
+  const prev = raw[index - 1];
+  if (!prev) return false;
+  // Punctuation ends a name: "On Thursday, Franklin practiced" is fine.
+  if (prev.trailingPunct) return false;
+  if (!prev.capitalized) return false;
+  if (NAME_PREFIX_CODES.has(prev.text.toUpperCase())) return false;
+  // An all-caps short code is a position or team abbreviation, not a name.
+  if (prev.text.length <= 3 && prev.text === prev.text.toUpperCase()) return false;
+  return true;
+}
+
 export function linkPlayers(
   text: string,
   index: PlayerNameIndex,
@@ -447,10 +516,12 @@ export function linkPlayers(
   }
 
   // Unambiguous last names, ignoring any word already inside a full name.
+  const raw = rawTokenInfo(text);
   words.forEach((word, i) => {
     if (consumed.has(i) || word.length < 4) return;
     const matches = index.byLastName.get(toKey(word));
     if (matches && matches.length === 1) {
+      if (precededByAnotherPersonsName(raw, i)) return;
       const playerId = matches[0]!;
       if (!found.has(playerId)) {
         found.set(playerId, { matchType: 'last', confidence: 0.7 });
