@@ -531,8 +531,29 @@ function buildReasons(
 }
 
 /**
- * Confidence blends: separation from the next option, data completeness, and
- * data freshness. It is deliberately never 1.0 — the model is a model.
+ * How much to trust this recommendation. Never 1.0 — the model is a model.
+ *
+ * WHAT THIS NUMBER MEANS
+ * ----------------------
+ * "How likely is taking this player to be a good decision", NOT "how sure are
+ * we that this exact name is the single optimal one". Those come apart
+ * constantly, and conflating them was a real bug: confidence was multiplied by
+ * the score gap to the next-best option, so two near-equal players drove it
+ * toward the floor. A full 15-round rehearsal on real data produced a median of
+ * 0.38 and could not exceed 0.75 even with complete data on an obvious pick.
+ *
+ * That is backwards. Two near-equal options mean *either* choice is fine — the
+ * cost of "getting it wrong" is close to zero. That is a reason for confidence,
+ * not doubt. A war room that flashes 38% next to a plainly correct pick teaches
+ * you to distrust it at exactly the moment the clock is running.
+ *
+ * So doubt is driven by what we actually do not know:
+ *   - completeness — missing projection or ADP is genuine ignorance, and it is
+ *     weighted superlinearly so partial data is not mistaken for most of the way
+ *     there;
+ *   - freshness — old data is old regardless of how clean the numbers look;
+ *   - separation — now a modest bonus when the top pick is genuinely clear,
+ *     rather than a multiplier that punishes close calls.
  */
 function computeConfidence(
   scored: ScoredPlayer[],
@@ -561,7 +582,11 @@ function computeConfidence(
     freshness = 0.85; // unknown freshness is itself a small penalty
   }
 
-  const raw = (0.35 + 0.4 * separation) * (0.55 + 0.45 * completeness) * freshness;
+  // Superlinear: knowing half of what matters is worth well under half the
+  // confidence, because the missing half is exactly where a bad pick hides.
+  const known = Math.pow(completeness, 1.5);
+
+  const raw = (0.35 + 0.5 * known + 0.12 * separation) * freshness;
   return Math.round(clamp(raw, 0.2, 0.95) * 100) / 100;
 }
 

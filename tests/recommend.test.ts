@@ -232,6 +232,77 @@ describe('recommend: honesty (§45)', () => {
     expect(rec.riskFactors.join(' ')).toMatch(/no adp|no projection/i);
   });
 
+  it('is confident about a good pick even when the runner-up is just as good', () => {
+    // The bug this pins: confidence used to be multiplied by the score gap to
+    // the next option, so two near-equal players drove it to the floor. But
+    // "either of these is fine" is a reason to act, not to hesitate — the cost
+    // of picking the wrong one is nearly zero. A full rehearsal on real data
+    // showed a 0.38 median and a 0.75 ceiling, which reads as "do not trust me"
+    // next to a plainly correct pick.
+    const twins: PlayerCard[] = [
+      {
+        id: 'a', name: 'Twin A', position: 'RB', team: 'ATL',
+        adp: 2, projectedPoints: 300, tier: 1, roleCertainty: 0.9, injuryRisk: 0.1,
+      },
+      {
+        id: 'b', name: 'Twin B', position: 'RB', team: 'BUF',
+        adp: 2.1, projectedPoints: 300, tier: 1, roleCertainty: 0.9, injuryRisk: 0.1,
+      },
+      {
+        id: 'c', name: 'Receiver', position: 'WR', team: 'CHI',
+        adp: 3, projectedPoints: 290, tier: 1, roleCertainty: 0.9, injuryRisk: 0.1,
+      },
+    ];
+    const rec = recommend({
+      state: createDraftState({ leagueId: 'l', teamCount: 12, rounds: 16, userSlot: 1 }),
+      league, players: twins, dataFetchedAt: fresh, now,
+    });
+    expect(rec.confidence).toBeGreaterThan(0.7);
+  });
+
+  it('is driven by what is unknown, not by how close the race is', () => {
+    const complete: PlayerCard[] = [
+      {
+        id: 'a', name: 'Known', position: 'RB', team: 'ATL',
+        adp: 2, projectedPoints: 300, tier: 1, roleCertainty: 0.9,
+      },
+      {
+        id: 'b', name: 'Known Two', position: 'WR', team: 'BUF',
+        adp: 3, projectedPoints: 295, tier: 1, roleCertainty: 0.9,
+      },
+    ];
+    // Same board shape, same tightness of race — but nothing is known about
+    // the players. That, and only that, should collapse confidence.
+    const unknown: PlayerCard[] = [
+      { id: 'a', name: 'Known', position: 'RB', team: 'ATL' },
+      { id: 'b', name: 'Known Two', position: 'WR', team: 'BUF' },
+    ];
+    const state = createDraftState({ leagueId: 'l', teamCount: 12, rounds: 16, userSlot: 1 });
+
+    const withData = recommend({ state, league, players: complete, dataFetchedAt: fresh, now });
+    const without = recommend({ state, league, players: unknown, dataFetchedAt: fresh, now });
+
+    expect(withData.confidence - without.confidence).toBeGreaterThan(0.25);
+  });
+
+  it('still cannot reach certainty on a perfect board', () => {
+    const obvious: PlayerCard[] = [
+      {
+        id: 'a', name: 'Clear Best', position: 'RB', team: 'ATL',
+        adp: 1, projectedPoints: 400, tier: 1, roleCertainty: 0.99, injuryRisk: 0.02,
+      },
+      {
+        id: 'b', name: 'Far Worse', position: 'WR', team: 'BUF',
+        adp: 90, projectedPoints: 80, tier: 8, roleCertainty: 0.3,
+      },
+    ];
+    const rec = recommend({
+      state: createDraftState({ leagueId: 'l', teamCount: 12, rounds: 16, userSlot: 1 }),
+      league, players: obvious, dataFetchedAt: fresh, now,
+    });
+    expect(rec.confidence).toBeLessThanOrEqual(0.95);
+  });
+
   it('handles an exhausted board without inventing a pick', () => {
     const allGone = stateAfter(players.slice(0, 100).map((p) => p.id));
     const rec = recommend({ state: allGone, league, players: players.slice(0, 100), now });

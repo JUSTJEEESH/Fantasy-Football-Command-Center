@@ -28,6 +28,24 @@ All notable changes to Fantasy Coach. Newest first.
 - RotoWire added as a fantasy-specific news wire.
 
 **Fixed**
+- **Every seat drafted a roster with no defense.** The board took Sleeper's top
+  600 by popularity, and Sleeper ranks team defenses below every skill player,
+  so all 32 fell outside the cut — the position was simply not on the board in
+  a league that requires one starter. The board now takes a floor per position
+  before spending the rest by rank, and a build whose board cannot fill a
+  12-team lineup says so.
+- **Confidence was measuring the wrong thing.** It was multiplied by the score
+  gap to the next-best option, so two near-equal players drove it to the floor:
+  a median of 0.38 across a full rehearsal, and a ceiling of 0.75 even with
+  complete data on an obvious pick. But near-equal options mean either choice is
+  fine — that is a reason for confidence, not doubt. It now tracks what is
+  actually unknown (completeness, freshness), with separation as a modest bonus.
+  Same rehearsal now reads median 0.86, falling to 0.38 for late-round players
+  with no ADP or projection.
+- An integration test looked its news source up by the literal key `espn_nfl`.
+  Renaming the retired feed broke it — in CI only, because a dev database still
+  had the old row seeded from an earlier run. The clean-database failure was
+  right and the local pass was the lie.
 - A draft pack could **only** be built by importing a CSV, so the 600 real
   players already in the deployment never reached the engine. Anyone who
   arrived without a spreadsheet got an empty war room.

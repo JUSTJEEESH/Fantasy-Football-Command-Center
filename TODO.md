@@ -5,10 +5,15 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 405 unit/integration tests + 32 browser tests passing.
+network switched off. 418 unit/integration tests + 32 browser tests passing.
 
-Real ADP, projections and bye weeks now ship in the build — the board no longer
-needs a CSV to exist.
+Real ADP, real projections and real bye weeks now ship in the build — the board
+no longer needs a CSV to exist. Verified against the live deployment: 600
+players, 515 with ESPN ADP, 358 with ESPN projections re-scored under Bay
+Islands rules, 600 with bye weeks, all six positions present.
+
+`pnpm rehearse` drafts all twelve seats against the deployed pack. Latest run:
+all twelve rosters legal and startable.
 
 **Your league (Bay Islands Fantasy) is encoded exactly** — scoring, roster,
 position caps, 15 rounds. Load it in Settings with one tap. Draft slot is left
@@ -72,7 +77,9 @@ in the meantime.
 - [x] Feeds fall back through alternate URLs; an empty parse counts as a failure
       instead of a silent success (this is what hid the dead ESPN feed)
 - [ ] Trend detection over the ADP/ranking time series
-- [ ] Confirm which ESPN feed URL the fallback settled on and promote it
+- [x] ESPN's NFL RSS confirmed retired (all three endpoints: HTTP 200, zero
+      items). Replaced with NFL.com; RotoWire added as a fantasy-specific wire.
+- [ ] Confirm NFL.com's feed is returning items on the next build
 
 ## Phase 8 — Coach layer ✅
 - [x] Intent router: 24 intents, NL variants, conversational context
@@ -107,6 +114,8 @@ in the meantime.
 - [x] 405 unit + integration tests (integration tests exercise the real SQL)
 - [x] 32 Playwright browser tests, incl. offline draft and the live news feed
 - [ ] Deployment docs (Vercel + Supabase)
+- [x] `pnpm rehearse` — full 15-round draft, all twelve seats, against the
+      deployed pack. Caught two bugs 405 passing tests did not.
 - [ ] Airplane-mode rehearsal on a real phone
 
 ---
