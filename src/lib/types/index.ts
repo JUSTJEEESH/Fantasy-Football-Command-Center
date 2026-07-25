@@ -235,6 +235,8 @@ export interface PlayerCard extends PlayerRef {
   bustProbability?: number;
 
   injuryStatus?: string | null;
+  /** Plain-English rendering of the designation, e.g. "on injured reserve". */
+  injuryNote?: string;
   /** Composite from news + ADP movement; positive = trending up. */
   trendScore?: number;
 

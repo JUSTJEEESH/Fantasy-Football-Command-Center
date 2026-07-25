@@ -17,12 +17,22 @@ import { guardedFetch, type FetchResult, type NewsProvider, type RawNewsItem, ty
  * These URLs are the publishers' documented public feeds. They are seeded into
  * the news_sources table, where any of them can be disabled without a deploy.
  */
-export const DEFAULT_RSS_SOURCES: Array<SourceDescriptor & { url: string }> = [
+export const DEFAULT_RSS_SOURCES: Array<
+  SourceDescriptor & { url: string; altUrls?: string[] }
+> = [
   {
     key: 'espn_nfl',
     name: 'ESPN NFL',
     type: 'rss',
+    // The NFL-specific feed answers 200 with a valid but empty document, which
+    // is why builds have been reporting zero items from ESPN. The alternates
+    // are tried in order and whichever returns items is the one used; the build
+    // log and the source panel both name it, so this never fails silently.
     url: 'https://www.espn.com/espn/rss/nfl/news',
+    altUrls: [
+      'https://www.espn.com/espn/rss/news',
+      'https://www.espn.com/espn/rss/nfl/news?format=rss',
+    ],
     reliability: 0.88,
     updateFrequencyMin: 15,
     limitations: 'Headline and summary only; not fantasy-specific, so most items filter out as noise.',
@@ -62,28 +72,85 @@ export const DEFAULT_RSS_SOURCES: Array<SourceDescriptor & { url: string }> = [
     requiresCredential: false,
     termsNote: 'Public RSS feed published for syndication.',
   },
+  {
+    // A fantasy-specific wire. General sports feeds bury the beat-reporter
+    // notes that actually move a draft board — snap counts, depth chart
+    // changes, camp reps — under game recaps and off-field stories.
+    key: 'rotowire_nfl',
+    name: 'RotoWire NFL',
+    type: 'rss',
+    url: 'https://www.rotowire.com/rss/news.php?sport=NFL',
+    altUrls: ['https://www.rotowire.com/rss/news.php?sport=nfl'],
+    reliability: 0.84,
+    updateFrequencyMin: 10,
+    limitations:
+      'Fantasy-first wire: high signal for role and injury notes, but it ' +
+      'aggregates other outlets\' reporting rather than breaking it, so it is ' +
+      'weighted below the outlets it repeats.',
+    requiresCredential: false,
+    termsNote: 'Public RSS feed published for syndication.',
+  },
 ];
 
 export class RssNewsProvider implements NewsProvider {
-  constructor(readonly descriptor: SourceDescriptor & { url: string }) {}
+  constructor(readonly descriptor: SourceDescriptor & { url: string; altUrls?: string[] }) {}
 
-  async fetchNews(): Promise<FetchResult<RawNewsItem>> {
+  /**
+   * Fetch the feed, falling back through `altUrls` if the primary URL is dead.
+   *
+   * Publishers move and retire RSS endpoints without redirecting, and the
+   * failure is quiet: the URL still answers 200 with a valid feed document
+   * containing zero items. That is why an empty parse counts as a failure here
+   * and advances to the next candidate — a feed that returns nothing is
+   * indistinguishable from a feed that is gone, and treating it as success is
+   * how a source silently disappears from the app for a season.
+   *
+   * Whichever URL worked is reported back, so the source panel can show it
+   * rather than the one that was tried first.
+   */
+  async fetchNews(): Promise<FetchResult<RawNewsItem> & { resolvedUrl?: string }> {
     const fetchedAt = new Date().toISOString();
-    const res = await guardedFetch(this.descriptor.url, {
-      sourceKey: this.descriptor.key,
-      accept: 'application/rss+xml, application/xml, text/xml',
-      timeoutMs: 12_000,
-    });
-    if (!res.ok) {
-      return { ok: false, items: [], fetchedAt, error: res.error, warnings: [] };
+    const candidates = [this.descriptor.url, ...(this.descriptor.altUrls ?? [])];
+    const attempts: string[] = [];
+
+    for (const url of candidates) {
+      const res = await guardedFetch(url, {
+        sourceKey: this.descriptor.key,
+        accept: 'application/rss+xml, application/xml, text/xml',
+        timeoutMs: 12_000,
+      });
+
+      if (!res.ok) {
+        attempts.push(`${url} — ${res.error}`);
+        continue;
+      }
+
+      const items = parseFeed(res.body, this.descriptor.key);
+      if (items.length === 0) {
+        attempts.push(`${url} — reachable but returned no items`);
+        continue;
+      }
+
+      return {
+        ok: true,
+        items,
+        fetchedAt,
+        resolvedUrl: url,
+        // A successful fallback is worth surfacing: it means the primary URL
+        // needs updating in the source list, and nobody would notice otherwise.
+        warnings:
+          url === this.descriptor.url
+            ? []
+            : [`Primary feed URL failed; using fallback ${url}.`],
+      };
     }
 
-    const items = parseFeed(res.body, this.descriptor.key);
     return {
-      ok: true,
-      items,
+      ok: false,
+      items: [],
       fetchedAt,
-      warnings: items.length === 0 ? ['Feed parsed but contained no items.'] : [],
+      error: `No working feed URL. Tried ${candidates.length}: ${attempts.join(' | ')}`,
+      warnings: [],
     };
   }
 }

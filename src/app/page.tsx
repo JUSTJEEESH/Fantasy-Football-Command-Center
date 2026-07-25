@@ -165,8 +165,10 @@ function ReadinessCard({
       <div className="card border-[var(--warn)]/40">
         <h2 className="font-semibold text-[var(--warn)]">Not ready for draft day</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          No draft pack yet. Set up your league and import player data so the war room
-          works without a network.
+          No draft pack yet. Load your league and tap{' '}
+          <span className="font-medium text-[var(--fg)]">Use the shipped player board</span> —
+          real players, ESPN ADP and bye weeks are already in the build. After that the
+          war room works with no network at all.
         </p>
         <Link href="/settings" className="btn-primary mt-3 inline-flex items-center">
           Set up

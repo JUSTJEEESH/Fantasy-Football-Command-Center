@@ -17,6 +17,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SleeperProvider } from '../src/lib/sources/sleeper';
+import { EspnProvider, type EspnPlayerRow } from '../src/lib/sources/espn';
 import { DEFAULT_RSS_SOURCES, RssNewsProvider, parseFeed } from '../src/lib/sources/rss';
 import { searchKey, type RawNewsItem } from '../src/lib/sources/types';
 import { clusterNews } from '../src/lib/news/dedup';
@@ -121,15 +122,150 @@ async function buildPlayers(): Promise<PlayerPack> {
 
   console.log(`  ✓ ${players.length} players (of ${result.items.length} fetched)`);
 
+  const sources: PlayerPack['sources'] = [
+    { key: 'sleeper', name: 'Sleeper', ok: true, itemCount: players.length },
+  ];
+
+  // Sleeper is the spine — it has the identities, teams, injury designations
+  // and depth chart. ESPN layers the draft-relevant numbers on top. If ESPN is
+  // unreachable the pack is still built and still useful; it just says so.
+  await mergeEspn(players, sources);
+
   return {
     generatedAt,
     ok: true,
-    sources: [
-      { key: 'sleeper', name: 'Sleeper', ok: true, itemCount: players.length },
-    ],
+    sources,
     season: SEASON,
     players,
   };
+}
+
+/**
+ * Fold ESPN's ADP, draft ranks, projections and bye weeks into the Sleeper
+ * player rows, in place.
+ *
+ * Matching is by normalized name plus position. A name that matches at a
+ * different position is a different human, and is skipped rather than merged —
+ * an ADP attached to the wrong player is worse than no ADP at all.
+ */
+async function mergeEspn(
+  players: PlayerPackEntry[],
+  sources: PlayerPack['sources'],
+): Promise<void> {
+  const espn = new EspnProvider();
+
+  console.log('\nFetching ESPN pro teams (bye weeks)…');
+  const teams = await espn.fetchProTeams(SEASON);
+  const byeByTeam = teams.ok ? (teams.items[0]?.byTeam ?? {}) : {};
+  const abbrevById = teams.ok ? (teams.items[0]?.abbrevById ?? {}) : {};
+
+  if (!teams.ok) {
+    console.error(`  ✗ ${teams.error}`);
+  } else {
+    console.log(
+      `  ✓ ${Object.keys(abbrevById).length} teams, ${Object.keys(byeByTeam).length} with a bye week published`,
+    );
+  }
+
+  console.log('Fetching ESPN draft board (ADP + projections)…');
+  const board = await espn.fetchDraftBoard(SEASON, { abbrevById });
+
+  if (!board.ok) {
+    console.error(`  ✗ ${board.error}`);
+    sources.push({
+      key: 'espn_fantasy',
+      name: 'ESPN Fantasy',
+      ok: false,
+      itemCount: 0,
+      error: board.error,
+    });
+  } else {
+    const mapping = board.mapping;
+    if (mapping?.ok) {
+      console.log(
+        `  ✓ ${board.items.length} players; stat mapping confirmed against ESPN's own ` +
+          `totals on ${mapping.sampleSize} rows (${(mapping.agreement * 100).toFixed(1)}% agreement, ` +
+          `median error ${mapping.medianError.toFixed(2)} pts)`,
+      );
+    } else {
+      // Loud on purpose. This is the branch where ESPN changed something and
+      // the projections silently would have been wrong.
+      console.error(`  ⚠ ${mapping?.reason ?? 'Stat mapping could not be verified.'}`);
+    }
+
+    const index = new Map<string, EspnPlayerRow>();
+    for (const row of board.items) index.set(`${row.position}:${searchKey(row.name)}`, row);
+
+    let matched = 0;
+    let withAdp = 0;
+    let withProjection = 0;
+
+    for (const player of players) {
+      const row = index.get(`${player.position}:${searchKey(player.name)}`);
+      if (!row) continue;
+      matched++;
+
+      if (row.adp !== undefined) {
+        player.adp = row.adp;
+        player.adpSource = 'ESPN';
+        withAdp++;
+      }
+      if (row.draftRank !== undefined) player.espnRank = row.draftRank;
+      if (row.percentOwned !== undefined) player.percentOwned = row.percentOwned;
+      if (row.projectedStats) {
+        player.projectedStats = row.projectedStats as Record<string, number>;
+        withProjection++;
+      }
+    }
+
+    console.log(
+      `  ✓ merged onto ${matched} of ${players.length} players — ` +
+        `${withAdp} with ADP, ${withProjection} with projections`,
+    );
+
+    sources.push({
+      key: 'espn_fantasy',
+      name: 'ESPN Fantasy',
+      ok: true,
+      itemCount: matched,
+      ...(mapping?.ok
+        ? {}
+        : { error: mapping?.reason ?? 'Projections withheld: stat mapping unverified.' }),
+    });
+  }
+
+  // Bye weeks come from the team schedule, so they apply to every player on a
+  // team regardless of whether ESPN listed that player on the draft board.
+  let withBye = 0;
+  for (const player of players) {
+    if (!player.team) continue;
+    const bye = byeByTeam[player.team.toUpperCase()];
+    if (bye) {
+      player.byeWeek = bye;
+      withBye++;
+    }
+  }
+  console.log(`  ✓ bye weeks attached to ${withBye} of ${players.length} players`);
+
+  if (!teams.ok) {
+    sources.push({
+      key: 'espn_schedule',
+      name: 'ESPN pro-team schedule',
+      ok: false,
+      itemCount: 0,
+      error: teams.error,
+    });
+  } else {
+    sources.push({
+      key: 'espn_schedule',
+      name: 'ESPN pro-team schedule',
+      ok: Object.keys(byeByTeam).length > 0,
+      itemCount: withBye,
+      ...(Object.keys(byeByTeam).length > 0
+        ? {}
+        : { error: `ESPN has not published ${SEASON} bye weeks yet.` }),
+    });
+  }
 }
 
 async function buildNews(players: PlayerPackEntry[]): Promise<NewsPack> {
@@ -151,7 +287,7 @@ async function buildNews(players: PlayerPackEntry[]): Promise<NewsPack> {
           items: parseFeed(
             readFileSync(join(process.cwd(), 'tests', 'fixtures', 'rss-nfl.xml'), 'utf8'),
             descriptor.key,
-          ).filter((_, itemIndex) => itemIndex % 4 >= sourceIndex),
+          ).filter((_, itemIndex) => itemIndex % 4 >= sourceIndex % 4),
           fetchedAt: new Date().toISOString(),
           warnings: [] as string[],
           error: undefined as string | undefined,
@@ -177,12 +313,23 @@ async function buildNews(players: PlayerPackEntry[]): Promise<NewsPack> {
       return Number.isNaN(age) || age <= (USE_FIXTURES ? Infinity : NEWS_WINDOW_HOURS);
     });
 
-    console.log(`  ✓ ${descriptor.name}: ${recent.length} recent of ${result.items.length}`);
+    // Name the URL that actually answered. When a primary feed has gone dead
+    // and a fallback carried the load, that fact needs to reach a human — it
+    // is the signal that the source list needs editing.
+    const resolvedUrl = 'resolvedUrl' in result ? result.resolvedUrl : undefined;
+    const viaFallback = resolvedUrl !== undefined && resolvedUrl !== descriptor.url;
+    console.log(
+      `  ✓ ${descriptor.name}: ${recent.length} recent of ${result.items.length}` +
+        (viaFallback ? ` (via fallback ${resolvedUrl})` : ''),
+    );
     sourceResults.push({
       key: descriptor.key,
       name: descriptor.name,
       ok: true,
       itemCount: recent.length,
+      ...(viaFallback
+        ? { error: `Primary feed URL is dead; served from fallback ${resolvedUrl}.` }
+        : {}),
     });
 
     for (const item of recent) {

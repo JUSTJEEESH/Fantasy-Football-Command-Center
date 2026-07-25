@@ -88,6 +88,30 @@ export interface PlayerPackEntry {
    * appears. Importing an ADP CSV replaces it.
    */
   sleeperRank?: number;
+
+  // --- ESPN, where available ------------------------------------------------
+  /**
+   * Average draft position in ESPN leagues. This is real ADP: an average of
+   * where the player actually went. It is ESPN-only, not a cross-platform
+   * consensus, and `adpSource` says so.
+   */
+  adp?: number;
+  adpSource?: string;
+  /** ESPN's own PPR draft rank. */
+  espnRank?: number;
+  /** Percent of ESPN leagues rostering the player. */
+  percentOwned?: number;
+  /**
+   * ESPN's season projection as a raw stat line. Shipped as STATS, not as
+   * points, so it can be scored under this league's rules rather than ESPN's.
+   * Absent whenever the build could not verify ESPN's stat-id mapping.
+   */
+  projectedStats?: Record<string, number>;
+  /**
+   * The team's bye week. Absent — never zero — when the schedule has not been
+   * published or the team is unknown, because a zero would read as a real week.
+   */
+  byeWeek?: number;
 }
 
 export interface PlayerPack extends PackMeta {

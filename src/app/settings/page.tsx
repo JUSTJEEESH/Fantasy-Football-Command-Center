@@ -9,6 +9,8 @@ import {
   makeUniquePlayerId,
 } from '@/lib/sources/csv-import';
 import { searchKey } from '@/lib/sources/types';
+import { loadPlayerPack, relativeTime } from '@/lib/static-data';
+import { playersFromPack, estimatePointsFromAdp } from '@/lib/pack-from-static';
 import {
   buildDraftPack,
   clearDraftState,
@@ -22,8 +24,10 @@ import type { League, LineupSlot, PlayerCard, Position } from '@/lib/types';
 /**
  * League setup wizard + data import (§11).
  *
- * Deliberately importable-from-CSV first: there is no free, terms-clean ADP
- * API, so the path that always works is the one made most prominent.
+ * Two ways to get a board. The shipped one — real players, ESPN ADP, bye weeks
+ * and injury designations, fetched by the build — is one tap and is what most
+ * people should use. CSV import stays for anyone who trusts their own numbers
+ * more, and it overrides the shipped board entirely.
  */
 export default function SettingsPage() {
   const [league, setLeague] = useState<League>(DEFAULT_LEAGUE);
@@ -32,6 +36,8 @@ export default function SettingsPage() {
   const [status, setStatus] = useState<{ kind: 'ok' | 'error' | 'info'; text: string } | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [packSummary, setPackSummary] = useState<string | null>(null);
+  const [packNotes, setPackNotes] = useState<string[]>([]);
+  const [loadingShipped, setLoadingShipped] = useState(false);
 
   useEffect(() => {
     const pack = loadPack();
@@ -55,6 +61,70 @@ export default function SettingsPage() {
   const applyPreset = (next: ScoringPreset) => {
     setPreset(next);
     updateLeague('scoring', SCORING_PRESETS[next]());
+  };
+
+  /**
+   * Build the offline draft pack from the data the deployment ships with.
+   *
+   * This is the path that should work for someone who has never exported a
+   * spreadsheet in their life: the build already fetched real players, real
+   * ESPN ADP, real bye weeks and real injury designations, so the only thing
+   * missing was scoring the projections under this league's rules and handing
+   * the result to the engine.
+   */
+  const handleUseShippedData = async () => {
+    setLoadingShipped(true);
+    setWarnings([]);
+    setStatus(null);
+    try {
+      const shipped = await loadPlayerPack();
+
+      if (!shipped) {
+        setStatus({
+          kind: 'error',
+          text:
+            'Could not read the shipped player board. If you are offline, ' +
+            'import a CSV instead — a pack you already built still works.',
+        });
+        return;
+      }
+      if (!shipped.ok || shipped.players.length === 0) {
+        setStatus({
+          kind: 'error',
+          text: `The last build could not fetch players: ${shipped.reason ?? 'no reason recorded'}.`,
+        });
+        return;
+      }
+
+      const { players, summary } = playersFromPack(shipped, league);
+      const saved = savePack(
+        buildDraftPack({
+          league,
+          players,
+          dataFetchedAt: shipped.generatedAt,
+          sources: shipped.sources
+            .filter((s) => s.ok)
+            .map((s) => ({ key: s.key, fetchedAt: shipped.generatedAt })),
+        }),
+      );
+
+      if (!saved.ok) {
+        setStatus({ kind: 'error', text: saved.error ?? 'Could not save the pack.' });
+        return;
+      }
+
+      setPackNotes(summary.notes);
+      setPackSummary(
+        `${summary.players} players · ${summary.withAdp} with ADP · ` +
+          `${summary.withProjection} projected · ${summary.withBye} with a bye week`,
+      );
+      setStatus({
+        kind: 'ok',
+        text: `Board built from data fetched ${relativeTime(shipped.generatedAt)}. Draft mode works offline now.`,
+      });
+    } finally {
+      setLoadingShipped(false);
+    }
   };
 
   /**
@@ -335,16 +405,36 @@ export default function SettingsPage() {
       <section className="card space-y-3">
         <h2 className="text-sm font-semibold">Player data</h2>
         <p className="text-xs text-[var(--muted)]">
-          There is no free, terms-clean ADP API, so CSV import is the reliable path.
-          Export ADP from FantasyPros, Sleeper, ESPN, or any tool you already use.
-          The file is parsed in your browser and never uploaded.
+          The build ships a player board fetched from Sleeper and ESPN. Loading it
+          takes one tap and needs no file. Importing your own CSV overrides it.
         </p>
 
         {packSummary && (
           <p className="rounded-lg bg-[var(--surface-2)] px-3 py-2 text-sm">{packSummary}</p>
         )}
 
-        <FileInput label="Import ADP (required)" onFile={handleAdpFile} />
+        <button
+          type="button"
+          className="btn-primary w-full"
+          disabled={loadingShipped}
+          onClick={handleUseShippedData}
+        >
+          {loadingShipped ? 'Building your board…' : 'Use the shipped player board'}
+        </button>
+
+        {/* What the board is made of, stated before you rely on it. */}
+        {packNotes.length > 0 && (
+          <ul className="space-y-1 rounded-lg bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--muted)]">
+            {packNotes.map((note, i) => (
+              <li key={i}>· {note}</li>
+            ))}
+          </ul>
+        )}
+
+        <p className="pt-1 text-xs text-[var(--muted)]">
+          Or import your own numbers — parsed in your browser, never uploaded.
+        </p>
+        <FileInput label="Import ADP" onFile={handleAdpFile} />
         <FileInput label="Import rankings / tiers (optional)" onFile={handleRankingsFile} />
 
         {warnings.length > 0 && (
@@ -454,24 +544,4 @@ const DEFAULT_LEAGUE: League = {
   adpFormat: 'ppr',
 };
 
-/**
- * Rough season-points estimate derived from ADP, used only when no projection
- * source has been imported.
- *
- * This is an approximation of the market's implied value, NOT a projection, and
- * it is labelled as such wherever it surfaces. Importing real projections
- * overwrites it. It exists so that a user with nothing but an ADP file still
- * gets sensible tiering and value-over-replacement rather than a blank board.
- */
-function estimatePointsFromAdp(adp: number, position: Position): number {
-  // Positional scales approximate typical PPR season totals for the top player
-  // at each position, decaying with draft cost.
-  const top: Record<Position, number> = {
-    QB: 400, RB: 330, WR: 320, TE: 260, K: 150, DST: 145,
-  };
-  const decay: Record<Position, number> = {
-    QB: 0.0016, RB: 0.0075, WR: 0.0065, TE: 0.0085, K: 0.0009, DST: 0.001,
-  };
-  const base = top[position];
-  return Math.round(base * Math.exp(-decay[position] * adp) * 10) / 10;
-}
+
