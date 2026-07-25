@@ -94,3 +94,27 @@ test('shows what your own board knows about a player in the news', async ({ page
   await page.getByRole('button', { name: 'My board', exact: true }).click();
   await expect(page.getByText(/No draft pack yet/i)).toBeVisible();
 });
+
+test('briefing puts your draft range first once a board exists', async ({ page }) => {
+  // Build the board, then read Home. Without a board the section cannot and
+  // must not appear — relevance to nothing is not a claim.
+  await page.goto(`${SITE}/settings/`);
+  await page.getByRole('button', { name: /Use the shipped player board/i }).click();
+  await expect(page.getByText(/Board built from data fetched/i)).toBeVisible({ timeout: 20_000 });
+
+  await page.goto(`${SITE}/`);
+  await expect(page.getByText('Your briefing')).toBeVisible();
+
+  const body = await page.locator('body').innerText();
+  if (!body.includes('YOUR DRAFT RANGE')) {
+    // Data-dependent: a build whose news links no draftable player has no
+    // section to show, and showing nothing is the correct behaviour.
+    test.skip(true, 'no draft-range news in this build');
+  }
+  // When it appears, it must lead — before the league-wide sections.
+  const range = body.indexOf('YOUR DRAFT RANGE');
+  for (const section of ['BIGGEST NEWS', 'INJURIES TO KNOW', 'TRENDING UP']) {
+    const at = body.indexOf(section);
+    if (at !== -1) expect(range).toBeLessThan(at);
+  }
+});

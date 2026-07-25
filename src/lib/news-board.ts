@@ -134,6 +134,34 @@ export function withBoardContext(
 }
 
 /**
+ * Does this event concern a player you might actually draft?
+ *
+ * Stricter than `concernsMyBoard`: not merely "still available", but inside
+ * the range you would realistically spend a pick on. With a draft slot set,
+ * that is the reach window around your next pick; before the slot is drawn it
+ * falls back to the startable range — the first eight rounds — because
+ * "available somewhere in a 600-player pool" is true of almost everyone and
+ * therefore says almost nothing.
+ *
+ * Your own players always qualify. News about your roster is the news.
+ */
+export function draftRelevant(
+  event: NewsEventView,
+  index: BoardIndex,
+  opts: { teamCount: number },
+): boolean {
+  if (!index.ready) return false;
+  return event.players.some((p) => {
+    const board = index.lookup(p.name);
+    if (!board) return false;
+    if (board.mine) return true;
+    if (board.drafted) return false;
+    if (board.reachable !== undefined) return board.reachable;
+    return board.adp !== undefined && board.adp <= opts.teamCount * 8;
+  });
+}
+
+/**
  * Does this event concern a player on your board?
  *
  * "On your board" means a player you could still end up with: someone in your

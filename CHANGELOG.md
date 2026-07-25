@@ -4,6 +4,20 @@ All notable changes to Fantasy Coach. Newest first.
 
 ## [Unreleased]
 
+### 2026-07-25 — The briefing knows whose board it is on
+
+**Added**
+- The Home briefing now leads with **Your draft range**: news about players in
+  reach of your pick (or already on your roster), each stamped with their ADP.
+  League-wide impact comes second — a CRITICAL story about a player nobody in
+  your range would draft matters less to you than a MEDIUM one about your
+  likely third-rounder. On live data this moved Lamar Jackson (ADP 39.5) and
+  Rashee Rice (ADP 24.0) above Patrick Mahomes (ADP 105.5), who had been
+  leading the briefing on raw impact.
+- Before the slot is drawn the range falls back to the first eight rounds;
+  with no board at all the section does not appear — relevance to nothing is
+  not a claim.
+
 ### 2026-07-25 — Linked to the ESPN league itself
 
 **Added**

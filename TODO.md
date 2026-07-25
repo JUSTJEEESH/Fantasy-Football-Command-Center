@@ -5,7 +5,7 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 495 unit/integration tests + 47 browser tests passing.
+network switched off. 501 unit/integration tests + 48 browser tests passing.
 
 Real ADP, real projections and real bye weeks now ship in the build — the board
 no longer needs a CSV to exist. Verified against the live deployment: 600
@@ -90,6 +90,7 @@ in the meantime.
       viewable; Test Connection verifies CORS from the real browser.
 - [ ] Confirm live sync against the real league (needs the league id + public
       visibility — a Test Connection tap after linking)
+- [x] Briefing leads with news about players in your draft range, ADP-stamped
 - [ ] Trend detection over the ADP/ranking time series
 - [x] ESPN's NFL RSS confirmed retired (all three endpoints: HTTP 200, zero
       items). Replaced with NFL.com; RotoWire added as a fantasy-specific wire.

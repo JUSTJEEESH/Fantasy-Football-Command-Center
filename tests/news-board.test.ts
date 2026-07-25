@@ -3,6 +3,7 @@ import {
   EMPTY_BOARD,
   buildBoardIndex,
   concernsMyBoard,
+  draftRelevant,
   withBoardContext,
 } from '@/lib/news-board';
 import { buildDraftPack } from '@/lib/draft-pack';
@@ -206,5 +207,45 @@ describe('before draft day, when there is no draft state', () => {
   it('still reports ADP and tier without a slot', () => {
     const index = buildBoardIndex(buildDraftPack({ league: BAY_ISLANDS, players }), null);
     expect(index.lookup('Jahmyr Gibbs')!.adp).toBe(1.7);
+  });
+});
+
+describe('draft-range relevance for the briefing', () => {
+  const packWithSlot = buildDraftPack({
+    league: { ...BAY_ISLANDS, draftSlot: 3 },
+    players,
+  });
+
+  it('says nothing without a board — relevance to nothing is not a claim', () => {
+    expect(draftRelevant(event(['Jahmyr Gibbs']), EMPTY_BOARD, { teamCount: 12 })).toBe(false);
+  });
+
+  it('flags a player in reach of your pick', () => {
+    const index = buildBoardIndex(packWithSlot, null);
+    expect(draftRelevant(event(['Jahmyr Gibbs']), index, { teamCount: 12 })).toBe(true);
+  });
+
+  it('does not flag a deep-bench player just because he is available', () => {
+    // "Available somewhere in a 600-player pool" is true of nearly everyone,
+    // which is exactly why it must not be the bar.
+    const index = buildBoardIndex(packWithSlot, null);
+    expect(draftRelevant(event(['Deep Sleeper']), index, { teamCount: 12 })).toBe(false);
+  });
+
+  it('falls back to the startable range before the slot is drawn', () => {
+    // No slot → no reach window → the first eight rounds stand in for it.
+    const index = buildBoardIndex(buildDraftPack({ league: BAY_ISLANDS, players }), null);
+    expect(draftRelevant(event(['Patrick Mahomes']), index, { teamCount: 12 })).toBe(true);
+    expect(draftRelevant(event(['Deep Sleeper']), index, { teamCount: 12 })).toBe(false);
+  });
+
+  it('always flags your own players', () => {
+    const index = buildBoardIndex(packWithSlot, state([{ playerId: 'wr1', draftSlot: 3 }]));
+    expect(draftRelevant(event(['Puka Nacua']), index, { teamCount: 12 })).toBe(true);
+  });
+
+  it('drops a player someone else already took', () => {
+    const index = buildBoardIndex(packWithSlot, state([{ playerId: 'rb1', draftSlot: 7 }]));
+    expect(draftRelevant(event(['Jahmyr Gibbs']), index, { teamCount: 12 })).toBe(false);
   });
 });

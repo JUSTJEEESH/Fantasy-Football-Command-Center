@@ -1,12 +1,20 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import {
   eventTypeLabel,
   relativeTime,
   type NewsEventView,
   type NewsPack,
 } from '@/lib/static-data';
+import { loadDraftState, loadPack } from '@/lib/draft-pack';
+import {
+  buildBoardIndex,
+  draftRelevant,
+  EMPTY_BOARD,
+  type BoardIndex,
+} from '@/lib/news-board';
 
 /**
  * The morning briefing (§21).
@@ -17,6 +25,19 @@ import {
  * having nothing to show.
  */
 export function Briefing({ pack }: { pack: NewsPack | null }) {
+  const [board, setBoard] = useState<BoardIndex>(EMPTY_BOARD);
+  const [teamCount, setTeamCount] = useState(12);
+
+  // The board lives in localStorage; reading it is what lets the briefing put
+  // YOUR players first instead of ordering purely by league-wide impact.
+  useEffect(() => {
+    const draftPack = loadPack();
+    if (draftPack) {
+      setBoard(buildBoardIndex(draftPack, loadDraftState()));
+      setTeamCount(draftPack.league.teamCount);
+    }
+  }, []);
+
   if (!pack) {
     return (
       <div className="card">
@@ -55,12 +76,18 @@ export function Briefing({ pack }: { pack: NewsPack | null }) {
     return picked;
   };
 
+  // Your draft range first. League-wide impact second: a CRITICAL event about
+  // a player nobody in your range would draft matters less to you than a
+  // MEDIUM one about your likely third-rounder.
+  const mine = take((e) => draftRelevant(e, board, { teamCount }));
   const critical = take((e) => e.fantasyImpact === 'CRITICAL');
   const injuries = take(
     (e) => ['injury', 'practice'].includes(e.eventType) && e.playerDirection.includes('NEGATIVE'),
   );
   const risers = take((e) => e.playerDirection.includes('POSITIVE'));
   const rest = take(() => true);
+  const anySection =
+    mine.length > 0 || critical.length > 0 || injuries.length > 0 || risers.length > 0;
 
   if (pack.events.length === 0) {
     return (
@@ -82,6 +109,14 @@ export function Briefing({ pack }: { pack: NewsPack | null }) {
           all {pack.events.length} →
         </Link>
       </div>
+
+      {mine.length > 0 && (
+        <Section title="Your draft range" tone="accent">
+          {mine.map((event) => (
+            <BriefingRow key={event.id} event={event} board={board} />
+          ))}
+        </Section>
+      )}
 
       {critical.length > 0 && (
         <Section title="Biggest news" tone="danger">
@@ -107,7 +142,7 @@ export function Briefing({ pack }: { pack: NewsPack | null }) {
         </Section>
       )}
 
-      {critical.length === 0 && injuries.length === 0 && risers.length === 0 && rest.length > 0 && (
+      {!anySection && rest.length > 0 && (
         <Section title="Worth knowing">
           {rest.map((event) => (
             <BriefingRow key={event.id} event={event} />
@@ -143,8 +178,9 @@ function Section({
   );
 }
 
-function BriefingRow({ event }: { event: NewsEventView }) {
+function BriefingRow({ event, board }: { event: NewsEventView; board?: BoardIndex }) {
   const player = event.players[0];
+  const context = player && board ? board.lookup(player.name) : undefined;
   return (
     <li className="text-sm leading-snug">
       <div className="flex flex-wrap items-baseline gap-x-2">
@@ -152,6 +188,11 @@ function BriefingRow({ event }: { event: NewsEventView }) {
         <span className="text-[11px] text-[var(--muted)]">
           {eventTypeLabel(event.eventType)} · {relativeTime(event.firstReportedAt)}
           {event.sources.length > 1 ? ` · ${event.sources.length} sources` : ''}
+          {context?.mine
+            ? ' · on your team'
+            : context?.adp !== undefined
+              ? ` · ADP ${context.adp.toFixed(1)}`
+              : ''}
         </span>
       </div>
       <p className="text-[var(--muted)]">{event.headline}</p>
