@@ -15,6 +15,12 @@ All notable changes to Fantasy Coach. Newest first.
   for Bay Islands: RB +1.2 rounds, QB +1.0, WR −0.2, **TE −3.7**. Every fade it
   produced was a tight end, which is the zero-required-TE rule showing up as
   arithmetic rather than as a hunch.
+- **Deadlines** (`src/lib/engine/runway.ts`) — the pick by which each group of
+  players is typically gone. On the live board: the RB2 group (Achane, Cook,
+  Jeanty, Barkley — 11 players) empties by pick 33, while the QB1 group (Allen,
+  Jackson, Maye, Daniels — 7 players) lasts until pick 85. Combined with the
+  positional edge that is a whole strategy: take backs early, take a
+  quarterback around round 7 at a discount.
 - Board context reaches the news feed and the plan alike: ADP, tier, in reach,
   already gone, or yours.
 
@@ -28,6 +34,12 @@ All notable changes to Fantasy Coach. Newest first.
   Bay Islands is now the default.
 
 **Refused**
+- Deadlines are built from their own coarse groups, not the engine's tiers.
+  `assignTiers` detects local gaps for the recommendation engine and produced
+  32 running-back tiers averaging two players each — correct for "is there a
+  cliff at this pick", useless as a deadline. The residual group is dropped
+  outright: 52 receivers whose deadline is the last pick of the draft is not a
+  deadline.
 - Market analysis runs only on players with a real projection. A points value
   derived from ADP is a function of ADP, so comparing the two would measure its
   own arithmetic.

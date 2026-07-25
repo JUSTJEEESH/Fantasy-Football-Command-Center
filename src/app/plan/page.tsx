@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { loadPack, type DraftPack } from '@/lib/draft-pack';
 import { analyzeMarket, type MarketAnalysis, type MarketEdge } from '@/lib/engine/market';
+import { buildRunway, type RunwayReport } from '@/lib/engine/runway';
 import { relativeTime } from '@/lib/static-data';
 import type { PlayerCard, Position } from '@/lib/types';
 
@@ -31,6 +32,11 @@ export default function PlanPage() {
   const market = useMemo<MarketAnalysis | null>(() => {
     if (!pack || pack.players.length === 0) return null;
     return analyzeMarket(pack.players, pack.league);
+  }, [pack]);
+
+  const runway = useMemo<RunwayReport | null>(() => {
+    if (!pack || pack.players.length === 0) return null;
+    return buildRunway(pack.players, pack.league);
   }, [pack]);
 
   if (!hydrated) return <SkeletonPlan />;
@@ -68,6 +74,8 @@ export default function PlanPage() {
       </p>
 
       <RulesEdge pack={pack} />
+
+      {runway && runway.tiers.length > 0 && <Deadlines runway={runway} />}
 
       {market && market.byPosition.length > 0 && (
         <section className="card space-y-3">
@@ -194,6 +202,89 @@ function RulesEdge({ pack }: { pack: DraftPack }) {
           <li key={i} className="claim-FACT text-[15px] leading-snug">
             {fact}
           </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * When each group of players runs out.
+ *
+ * The most useful thing on the page during a draft, because it converts "who
+ * is best" into "what am I about to lose". Before a deadline you can take
+ * value anywhere; after it you are shopping a worse group at that position.
+ */
+function Deadlines({ runway }: { runway: RunwayReport }) {
+  const [open, setOpen] = useState<string | null>(null);
+
+  return (
+    <section className="card space-y-3">
+      <div>
+        <h2 className="text-sm font-semibold">Deadlines</h2>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          The pick by which each group is typically gone. Before it you have choices;
+          after it you are picking from a visibly worse group.
+        </p>
+      </div>
+
+      <ul className="space-y-1">
+        {runway.tiers.map((tier) => {
+          const key = `${tier.position}${tier.tier}`;
+          const isOpen = open === key;
+          return (
+            <li key={key}>
+              <button
+                type="button"
+                onClick={() => setOpen(isOpen ? null : key)}
+                className="flex w-full items-baseline gap-3 rounded-lg bg-[var(--surface-2)] px-3 py-2 text-left"
+                aria-expanded={isOpen}
+              >
+                {/* The spaces are real characters, not CSS margins: a screen
+                    reader announcing "R1pick 5" is the same defect as a
+                    sighted reader seeing it run together. */}
+                <span className="w-20 shrink-0 text-sm font-bold tabular-nums">
+                  R{tier.deadlineRound}{' '}
+                  <span className="text-xs font-normal text-[var(--muted)]">
+                    pick {Math.round(tier.lastAdp)}
+                  </span>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">
+                    {tier.position}
+                    {tier.tier}{' '}
+                    <span className="text-xs font-normal text-[var(--muted)]">
+                      · {tier.count} left · {tier.headliner}
+                    </span>
+                  </span>
+                </span>
+              </button>
+
+              {isOpen && (
+                <ul className="mt-1 space-y-0.5 border-l border-[var(--surface-2)] pl-4 text-sm">
+                  {tier.players.map((p) => (
+                    <li key={p.name} className="flex justify-between gap-3">
+                      <span className="truncate">
+                        {p.name}
+                        {p.team ? (
+                          <span className="ml-1 text-xs text-[var(--muted)]">{p.team}</span>
+                        ) : null}
+                      </span>
+                      <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">
+                        ADP {p.adp.toFixed(1)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      <ul className="space-y-1 text-xs text-[var(--muted)]">
+        {runway.notes.map((note, i) => (
+          <li key={i}>· {note}</li>
         ))}
       </ul>
     </section>

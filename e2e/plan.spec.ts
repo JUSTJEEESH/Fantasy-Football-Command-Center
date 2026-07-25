@@ -65,4 +65,29 @@ test.describe('draft plan', () => {
       page.getByText(/Let someone else take them|priced about right/i).first(),
     ).toBeVisible();
   });
+
+  test('puts a pick number on when each group of players runs out', async ({ page }) => {
+    await page.goto('/plan');
+    const section = page.locator('section', { hasText: 'Deadlines' }).first();
+    if ((await section.count()) === 0) test.skip(true, 'board too small for deadlines');
+
+    // A deadline is only useful if it names a round AND a pick. Asserted on
+    // the row's own text rather than on a text node, since the round and the
+    // pick live in nested spans.
+    const row = section.getByRole('button').first();
+    expect(await row.innerText()).toMatch(/R\d+\s+pick \d+/);
+
+    // Tapping one has to show who is actually in the group — the deadline is
+    // useless without the shopping list it applies to.
+    await row.click();
+    await expect(section.getByText(/ADP \d+\.\d/).first()).toBeVisible();
+  });
+
+  test('does not put a kicker deadline on the sheet', async ({ page }) => {
+    await page.goto('/plan');
+    const section = page.locator('section', { hasText: 'Deadlines' }).first();
+    if ((await section.count()) === 0) test.skip(true, 'board too small for deadlines');
+    // One kicker, last two rounds, no planning required.
+    await expect(section.getByText(/^K\d/)).toHaveCount(0);
+  });
 });
