@@ -12,6 +12,15 @@ import {
   type NewsEventView,
   type NewsPack,
 } from '@/lib/static-data';
+import { loadDraftState, loadPack } from '@/lib/draft-pack';
+import {
+  buildBoardIndex,
+  concernsMyBoard,
+  withBoardContext,
+  EMPTY_BOARD,
+  type BoardContext,
+  type BoardIndex,
+} from '@/lib/news-board';
 
 type Filter = 'all' | 'injury' | 'roles' | 'linked';
 
@@ -28,6 +37,13 @@ export default function NewsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [board, setBoard] = useState<BoardIndex>(EMPTY_BOARD);
+
+  // Your board is local — no network, no waiting. Reading it here is what lets
+  // a headline say "you'd take him at 2.3" instead of just naming a player.
+  useEffect(() => {
+    setBoard(buildBoardIndex(loadPack(), loadDraftState()));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,11 +71,11 @@ export default function NewsPage() {
           ['depth_chart', 'usage', 'trade', 'signing'].includes(e.eventType),
         );
       case 'linked':
-        return pack.events.filter((e) => e.players.length > 0);
+        return pack.events.filter((e) => concernsMyBoard(e, board));
       default:
         return pack.events;
     }
-  }, [pack, filter]);
+  }, [pack, filter, board]);
 
   const freshness = packFreshness(pack);
 
@@ -139,6 +155,7 @@ export default function NewsPage() {
                 <PlayerGroup
                   key={group.lead.id}
                   group={group}
+                  board={board}
                   expanded={expanded}
                   onToggle={(id) => setExpanded(expanded === id ? null : id)}
                 />
@@ -153,6 +170,7 @@ export default function NewsPage() {
                 <PlayerGroup
                   key={group.lead.id}
                   group={group}
+                  board={board}
                   expanded={expanded}
                   onToggle={(id) => setExpanded(expanded === id ? null : id)}
                 />
@@ -162,7 +180,11 @@ export default function NewsPage() {
 
           {events.length === 0 && (
             <p className="py-8 text-center text-sm text-[var(--muted)]">
-              Nothing matches this filter.
+              {filter === 'linked' && !board.ready
+                ? 'No draft pack yet, so there is no board to compare against. Settings → Use the shipped player board.'
+                : filter === 'linked'
+                  ? 'Nothing in the last build touched a player still available to you.'
+                  : 'Nothing matches this filter.'}
             </p>
           )}
         </>
@@ -184,10 +206,12 @@ export default function NewsPage() {
  */
 function PlayerGroup({
   group,
+  board,
   expanded,
   onToggle,
 }: {
   group: EventGroup;
+  board: BoardIndex;
   expanded: string | null;
   onToggle: (id: string) => void;
 }) {
@@ -197,6 +221,7 @@ function PlayerGroup({
     <div className="space-y-2">
       <EventCard
         event={group.lead}
+        board={board}
         expanded={expanded === group.lead.id}
         onToggle={() => onToggle(group.lead.id)}
       />
@@ -217,6 +242,7 @@ function PlayerGroup({
                 <EventCard
                   key={event.id}
                   event={event}
+                  board={board}
                   expanded={expanded === event.id}
                   onToggle={() => onToggle(event.id)}
                 />
@@ -231,13 +257,16 @@ function PlayerGroup({
 
 function EventCard({
   event,
+  board,
   expanded,
   onToggle,
 }: {
   event: NewsEventView;
+  board: BoardIndex;
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const linked = withBoardContext(event, board);
   return (
     <article className="card p-0 overflow-hidden">
       <button
@@ -254,7 +283,7 @@ function EventCard({
               <span className="tag bg-[var(--surface-2)] text-[var(--muted)]">
                 {eventTypeLabel(event.eventType)}
               </span>
-              {event.players.slice(0, 2).map((p) => (
+              {linked.slice(0, 2).map((p) => (
                 <span key={p.name} className="tag bg-[var(--accent)]/15 text-[var(--accent)]">
                   {p.name}
                   {p.position ? ` · ${p.position}` : ''}
@@ -264,6 +293,9 @@ function EventCard({
                 <span className="tag bg-sky-400/15 text-sky-300">
                   {event.sources.length} sources
                 </span>
+              )}
+              {linked.map((p) =>
+                p.board ? <BoardChips key={`b-${p.name}`} name={p.name} board={p.board} /> : null,
               )}
             </div>
 
@@ -353,6 +385,49 @@ function EventCard({
 }
 
 /** Colour-coded spine: severity by height of colour, direction by hue. */
+/**
+ * What your own board knows about a player in the news.
+ *
+ * The point of the feed is not that something happened — it is whether it
+ * happened to someone you might end up with. "ADP 24 · tier 2 · still there"
+ * answers that in four words; the player's name alone does not.
+ */
+function BoardChips({ name, board }: { name: string; board: BoardContext }) {
+  const chips: Array<{ text: string; className: string }> = [];
+
+  if (board.mine) {
+    chips.push({ text: 'on your team', className: 'bg-[var(--accent)]/25 text-[var(--accent)]' });
+  } else if (board.drafted) {
+    chips.push({ text: 'already drafted', className: 'bg-[var(--surface-2)] text-[var(--muted)]' });
+  } else if (board.reachable) {
+    chips.push({ text: 'in reach', className: 'bg-emerald-400/15 text-emerald-300' });
+  }
+
+  if (board.adp !== undefined) {
+    chips.push({
+      text: `ADP ${board.adp.toFixed(1)}`,
+      className: 'bg-[var(--surface-2)] text-[var(--muted)]',
+    });
+  }
+  if (board.tier !== undefined) {
+    chips.push({
+      text: `tier ${board.tier}`,
+      className: 'bg-[var(--surface-2)] text-[var(--muted)]',
+    });
+  }
+
+  if (chips.length === 0) return null;
+  return (
+    <>
+      {chips.map((chip) => (
+        <span key={`${name}-${chip.text}`} className={`tag ${chip.className}`}>
+          {chip.text}
+        </span>
+      ))}
+    </>
+  );
+}
+
 function ImpactRail({ impact, direction }: { impact: string; direction: string }) {
   const tone =
     direction.includes('NEGATIVE')

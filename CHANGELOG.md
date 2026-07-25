@@ -32,6 +32,12 @@ All notable changes to Fantasy Coach. Newest first.
   one fact buries the next player below the fold. The strongest item now leads
   and the rest sit behind "6 more on Patrick Mahomes". Nothing is merged or
   discarded, and the count is stated.
+- **News items now carry your own board's context.** A linked player shows his
+  ADP, his tier, and whether he is in reach of your next pick, already gone, or
+  on your roster. "Mahomes cleared" and "Mahomes cleared · ADP 105 · tier 6"
+  are different pieces of information, and only one of them helps you draft.
+  Before draft day the reach window is measured from your first pick; if the
+  slot has not been drawn, no reach claim is made at all.
 - RotoWire added as a fantasy-specific news wire.
 - Dead feeds are removed rather than left permanently red, with the evidence
   recorded in the source list: ESPN's NFL RSS returns 200-with-zero-items on

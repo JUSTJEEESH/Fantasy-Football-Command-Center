@@ -86,3 +86,11 @@ test('collapses repeated coverage of one player instead of stacking cards', asyn
   await first.click();
   await expect(page.getByRole('button', { name: /^Hide$/ }).first()).toBeVisible();
 });
+
+test('shows what your own board knows about a player in the news', async ({ page }) => {
+  // Before a pack exists the board filter has nothing to compare against, and
+  // has to say so rather than looking like a quiet news day.
+  await page.goto(`${SITE}/news/`);
+  await page.getByRole('button', { name: 'My board', exact: true }).click();
+  await expect(page.getByText(/No draft pack yet/i)).toBeVisible();
+});
