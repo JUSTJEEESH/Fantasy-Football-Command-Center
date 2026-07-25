@@ -5,7 +5,7 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 350 unit/integration tests + 19 browser tests passing.
+network switched off. 370 unit/integration tests + 29 browser tests passing.
 
 **Your league (Bay Islands Fantasy) is encoded exactly** — scoring, roster,
 position caps, 15 rounds. Load it in Settings with one tap. Draft slot is left
@@ -59,8 +59,13 @@ in the meantime.
 - [!] **Live verification of Sleeper + RSS adapters** — blocked by sandbox egress.
       Run `pnpm doctor` on your own machine; it does the real requests.
 - [x] Ingestion writer (`pnpm ingest`) persisting to Postgres, verified against local PG
+- [x] Build-time data pack: real players + real news baked into the static
+      deployment, rebuilt every 3 hours by a scheduled workflow
+- [x] News feed UI: impact-ordered, attributed, with the reasoning shown
+- [x] Home briefing populated from the same data
 - [ ] Trend detection over the ADP/ranking time series
-- [ ] Scheduled ingestion (cron route)
+- [ ] ESPN RSS feed returns zero items — URL appears to have moved, needs a
+      replacement (the source panel flags it rather than hiding it)
 
 ## Phase 8 — Coach layer ✅
 - [x] Intent router: 24 intents, NL variants, conversational context
@@ -91,8 +96,8 @@ in the meantime.
 - [ ] Service worker for full offline asset caching
 
 ## Phase 10–11 — Testing & deploy
-- [x] 350 unit + integration tests (integration tests exercise the real SQL)
-- [x] 19 Playwright browser tests at iPhone dimensions, incl. offline draft
+- [x] 370 unit + integration tests (integration tests exercise the real SQL)
+- [x] 29 Playwright browser tests, incl. offline draft and the live news feed
 - [ ] Deployment docs (Vercel + Supabase)
 - [ ] Airplane-mode rehearsal on a real phone
 

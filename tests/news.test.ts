@@ -349,6 +349,9 @@ describe('classification (§6, §7)', () => {
 
     expect(inBodyOnly.impactScore).toBeLessThan(inHeadline.impactScore * 0.7);
     expect(inBodyOnly.signals.join(' ')).toMatch(/context, not the headline/);
+    // And it must not assert a value change it cannot support.
+    expect(inHeadline.playerDirection).toBe('STRONG_NEGATIVE');
+    expect(inBodyOnly.playerDirection).toBe('NEUTRAL');
   });
 
   it('recognizes being cleared to return', () => {

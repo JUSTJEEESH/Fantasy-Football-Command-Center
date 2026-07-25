@@ -274,13 +274,19 @@ export function classifyCluster(
     (ageHours === null || ageHours <= 12) &&
     impactScore >= 55;
 
+  // A context-only match tells us the article mentions an injury, not that one
+  // just happened. Asserting "his value drops sharply — plan for a replacement"
+  // off a rehab retrospective is exactly the confident-but-wrong claim this
+  // system is built to avoid, so the direction is withheld rather than guessed.
+  const playerDirection = contextOnly ? 'NEUTRAL' : best.direction;
+
   return {
     eventType: best.eventType,
     classification: toClassification(impactScore, isBreaking),
     fantasyImpact: toFantasyImpact(impactScore),
     impactScore,
-    playerDirection: best.direction,
-    teamDirection: teamDirectionFor(best),
+    playerDirection,
+    teamDirection: contextOnly ? 'NEUTRAL' : teamDirectionFor(best),
     positionsAffected: detectPositions(text),
     confidence: computeConfidence(opts.sourceReliability, distinctSources, ageHours),
     signals,
