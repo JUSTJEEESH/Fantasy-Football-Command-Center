@@ -21,7 +21,10 @@ import {
 import { BAY_ISLANDS } from '@/lib/leagues/bay-islands';
 import {
   fetchEspnLeague,
+  parsePastedSnapshot,
   slotOfTeam,
+  snapshotUrl,
+  type EspnLeagueResult,
   type EspnLeagueSnapshot,
 } from '@/lib/sources/espn-league';
 import type { League, LineupSlot, PlayerCard, Position } from '@/lib/types';
@@ -46,6 +49,7 @@ export default function SettingsPage() {
   const [espnBusy, setEspnBusy] = useState(false);
   const [espnStatus, setEspnStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [espnSnapshot, setEspnSnapshot] = useState<EspnLeagueSnapshot | null>(null);
+  const [pasteText, setPasteText] = useState('');
 
   useEffect(() => {
     const pack = loadPack();
@@ -246,22 +250,31 @@ export default function SettingsPage() {
     setEspnBusy(true);
     setEspnSnapshot(null);
     try {
-      const result = await fetchEspnLeague(id, league.season);
-      if (!result.ok) {
-        setEspnStatus({ kind: 'error', text: result.detail });
-        return;
-      }
-      setEspnSnapshot(result.snapshot);
-      const name = result.snapshot.leagueName ?? `league ${id}`;
-      setEspnStatus({
-        kind: 'ok',
-        text: result.snapshot.draftOrder
-          ? `Connected to ${name}. The draft order is published — tap your team below to set your slot.`
-          : `Connected to ${name}. ESPN has not published the draft order yet; check back after it is drawn.`,
-      });
+      applySnapshotResult(await fetchEspnLeague(id, league.season));
     } finally {
       setEspnBusy(false);
     }
+  };
+
+  /** Same downstream handling whether the snapshot was fetched or pasted. */
+  const applySnapshotResult = (result: EspnLeagueResult) => {
+    if (!result.ok) {
+      setEspnStatus({ kind: 'error', text: result.detail });
+      return;
+    }
+    setEspnSnapshot(result.snapshot);
+    const name = result.snapshot.leagueName ?? 'your league';
+    setEspnStatus({
+      kind: 'ok',
+      text: result.snapshot.draftOrder
+        ? `Connected to ${name}. The draft order is published — tap your team below to set your slot.`
+        : `Connected to ${name}. ESPN has not published the draft order yet; check back after it is drawn.`,
+    });
+  };
+
+  const handlePaste = () => {
+    setEspnSnapshot(null);
+    applySnapshotResult(parsePastedSnapshot(pasteText));
   };
 
   /** Tap your own team in the fetched order → your slot is set and saved. */
@@ -507,6 +520,43 @@ export default function SettingsPage() {
             {espnStatus.text}
           </p>
         )}
+
+        <details className="rounded-lg bg-[var(--surface-2)] px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium">
+            League private? Paste it instead
+          </summary>
+          <div className="mt-2 space-y-2 text-xs text-[var(--muted)]">
+            <p>
+              If your league manager keeps the league private, your own logged-in
+              browser can still read it — the app just can&apos;t do it for you.
+              While logged in to ESPN,{' '}
+              {league.espnLeagueId ? (
+                <a
+                  className="text-sky-400 underline"
+                  href={snapshotUrl(league.espnLeagueId, league.season)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  open your league&apos;s data page
+                </a>
+              ) : (
+                <span>enter your league id above, then open the link that appears here</span>
+              )}
+              , select everything (Ctrl/Cmd+A), copy, and paste it below. It is
+              league data only — no password, no cookies, and it never leaves this
+              device.
+            </p>
+            <textarea
+              className="input h-24 w-full font-mono text-[11px]"
+              placeholder='Starts with {"draftDetail": …'
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+            />
+            <button type="button" className="btn-ghost w-full" onClick={handlePaste}>
+              Import pasted league
+            </button>
+          </div>
+        </details>
 
         {espnSnapshot?.draftOrder && (
           <div className="space-y-1">

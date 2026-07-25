@@ -4,6 +4,23 @@ All notable changes to Fantasy Coach. Newest first.
 
 ## [Unreleased]
 
+### 2026-07-25 — The private-league path
+
+**Added**
+- **Paste sync.** The league manager keeping the league private closes the
+  fetch path — the app can never carry the user's ESPN login, and no code
+  could change that. But the user's OWN logged-in browser reads the league
+  fine: opening the data URL in a normal tab is a first-party navigation,
+  cookies flow, and the league JSON renders as text. The app now shows that
+  exact link, takes the pasted result, and everything downstream works
+  identically to the fetch path:
+  · Settings — paste once, import the draft order, tap your team, slot set.
+  · War room — paste mid-draft and every pick made so far syncs in one go,
+    with manual entry covering the gaps between pastes.
+- What is pasted is league data only — rosters, picks, the order. No password,
+  no cookies; it never leaves the device. The paste box explains a pasted web
+  page ("open the exact link, copy the raw code") instead of saying "invalid".
+
 ### 2026-07-25 — Market movers, and a missing door
 
 **Added**

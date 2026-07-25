@@ -196,3 +196,68 @@ test.describe('following the draft live', () => {
     await expect(page.getByRole('button', { name: 'Follow', exact: true })).toHaveCount(0);
   });
 });
+
+test.describe('the private-league paste path', () => {
+  test('imports the draft order from pasted league JSON', async ({ page }) => {
+    // No network route for ESPN at all — the whole point is that none is made.
+    await buildBoard(page);
+    await page.getByPlaceholder('e.g. 1234567').fill('1234567');
+    await page.getByText('League private? Paste it instead').click();
+    await page
+      .getByPlaceholder(/Starts with/)
+      .fill(JSON.stringify(leagueBody([])));
+    await page.getByRole('button', { name: /Import pasted league/i }).click();
+
+    await expect(page.getByText(/Connected to Bay Islands Fantasy/i)).toBeVisible();
+    await page.getByRole('button', { name: /Team 9/ }).click();
+    await expect(page.getByText(/drafting from slot 4\. Saved\./i)).toBeVisible();
+  });
+
+  test('explains a pasted web page instead of saying "invalid"', async ({ page }) => {
+    await buildBoard(page);
+    await page.getByText('League private? Paste it instead').click();
+    await page.getByPlaceholder(/Starts with/).fill('<!DOCTYPE html><html></html>');
+    await page.getByRole('button', { name: /Import pasted league/i }).click();
+    await expect(page.getByText(/web page, not league data/i)).toBeVisible();
+  });
+
+  test('war room syncs all picks from one paste, no network involved', async ({ page }) => {
+    const shipped = {
+      generatedAt: new Date().toISOString(),
+      ok: true,
+      sources: [{ key: 'sleeper', name: 'Sleeper', ok: true, itemCount: 3 }],
+      season: 2026,
+      players: [
+        { id: 'RB-a', name: 'Alpha Back', position: 'RB', team: 'DET', adp: 1.5, espnId: 111 },
+        { id: 'RB-b', name: 'Bravo Back', position: 'RB', team: 'ATL', adp: 2.5, espnId: 222 },
+        { id: 'WR-c', name: 'Charlie Wideout', position: 'WR', team: 'LAR', adp: 3.5, espnId: 333 },
+      ],
+    };
+    await page.route('**/data/players.json', (route: Route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(shipped) }),
+    );
+
+    await buildBoard(page);
+    await page.getByLabel('Your draft slot', { exact: true }).fill('3');
+    await page.getByPlaceholder('e.g. 1234567').fill('1234567');
+    await page.getByRole('button', { name: /^Save league$/i }).click();
+
+    await page.goto('/draft');
+    await page.getByText('League private? Paste to sync').click();
+    await page
+      .getByPlaceholder(/Starts with/)
+      .fill(
+        JSON.stringify(
+          leagueBody([
+            { overallPickNumber: 1, playerId: 111, teamId: 4 },
+            { overallPickNumber: 2, playerId: 222, teamId: 7 },
+          ]),
+        ),
+      );
+    await page.getByRole('button', { name: /Sync pasted picks/i }).click();
+
+    // Both picks land; the clock is on pick 3 — ours.
+    await expect(page.getByText(/2 picks synced/i)).toBeVisible();
+    await expect(page.getByText(/pick 3/i).first()).toBeVisible();
+  });
+});

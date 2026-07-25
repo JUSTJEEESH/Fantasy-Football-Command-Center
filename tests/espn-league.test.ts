@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   parseLeaguePayload,
+  parsePastedSnapshot,
   planSync,
   slotOfTeam,
+  snapshotUrl,
 } from '@/lib/sources/espn-league';
 import { createDraftState, draftReducer } from '@/lib/engine/draft-state';
 import type { DraftState, PlayerCard } from '@/lib/types';
@@ -210,5 +212,53 @@ describe('planning a sync', () => {
     expect(state.picks).toHaveLength(3);
     // And a re-plan against the same snapshot is now a no-op.
     expect(planSync(state, snapshot, PLAYERS).status).toBe('in-sync');
+  });
+});
+
+describe('the paste path for private leagues', () => {
+  it('parses a pasted league payload identically to a fetched one', () => {
+    const result = parsePastedSnapshot(JSON.stringify(leaguePayload({})));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.snapshot.leagueName).toBe('Bay Islands Fantasy');
+      expect(slotOfTeam(result.snapshot, 4)).toBe(1);
+    }
+  });
+
+  it('accepts ESPN\'s array envelope', () => {
+    // Some views answer as a one-element array wrapping the league.
+    const result = parsePastedSnapshot(JSON.stringify([leaguePayload({})]));
+    expect(result.ok).toBe(true);
+  });
+
+  it('recognizes a pasted web page and says what to do instead', () => {
+    const result = parsePastedSnapshot('<!DOCTYPE html><html><body>ESPN</body></html>');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.detail).toMatch(/web page, not league data/i);
+  });
+
+  it('explains a partial copy rather than saying "invalid"', () => {
+    const result = parsePastedSnapshot('{"id": 1234567, "settings": {');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.detail).toMatch(/copy it whole/i);
+  });
+
+  it('rejects valid JSON that is not a league', () => {
+    const result = parsePastedSnapshot('{"hello": "world"}');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.detail).toMatch(/not a league snapshot/i);
+  });
+
+  it('says so when nothing was pasted', () => {
+    const result = parsePastedSnapshot('   ');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.detail).toMatch(/nothing was pasted/i);
+  });
+
+  it('builds the link with the league id and season in place', () => {
+    const url = snapshotUrl('1234567', 2026);
+    expect(url).toContain('/seasons/2026/');
+    expect(url).toContain('/leagues/1234567');
+    expect(url).toContain('view=mDraftDetail');
   });
 });

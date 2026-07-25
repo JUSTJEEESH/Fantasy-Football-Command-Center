@@ -165,9 +165,7 @@ export async function fetchEspnLeague(
   leagueId: string | number,
   season: number,
 ): Promise<EspnLeagueResult> {
-  const url =
-    `${READ_HOST}/seasons/${season}/segments/0/leagues/${leagueId}` +
-    `?view=mDraftDetail&view=mSettings&view=mTeam`;
+  const url = snapshotUrl(leagueId, season);
 
   let res: Response;
   try {
@@ -220,6 +218,62 @@ export async function fetchEspnLeague(
       ok: false,
       kind: 'bad-payload',
       detail: `ESPN answered, but not with a league in the expected shape: ${String(err)}`,
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The paste path — how a PRIVATE league gets in.
+//
+// The app's fetch cannot carry the user's ESPN login. But the user's own
+// browser can: opening the data URL directly in a logged-in tab is a
+// first-party navigation, cookies flow, and the league JSON renders as text.
+// Copy it, paste it here, and everything downstream — draft order, team list,
+// live picks — works identically to the fetch path. The league stays private;
+// nothing leaves the user's device; no credential is ever typed anywhere.
+// ---------------------------------------------------------------------------
+
+/** The URL to open in a logged-in tab. Shown to the user, never fetched. */
+export function snapshotUrl(leagueId: string | number, season: number): string {
+  return (
+    `${READ_HOST}/seasons/${season}/segments/0/leagues/${leagueId}` +
+    `?view=mDraftDetail&view=mSettings&view=mTeam`
+  );
+}
+
+/** Parse pasted league JSON, with failures explained in the user's terms. */
+export function parsePastedSnapshot(text: string): EspnLeagueResult {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return { ok: false, kind: 'bad-payload', detail: 'Nothing was pasted.' };
+  }
+
+  let json: unknown;
+  try {
+    json = JSON.parse(trimmed);
+  } catch {
+    return {
+      ok: false,
+      kind: 'bad-payload',
+      detail:
+        trimmed.startsWith('<')
+          ? 'That looks like a web page, not league data. Open the exact link shown above and copy the whole page — it should look like raw code starting with {.'
+          : 'That is not valid JSON. Select everything on the data page (Ctrl/Cmd+A) and copy it whole.',
+    };
+  }
+
+  // ESPN answers some views as a one-element array.
+  const candidate = Array.isArray(json) ? json[0] : json;
+
+  try {
+    return { ok: true, snapshot: parseLeaguePayload(candidate) };
+  } catch {
+    return {
+      ok: false,
+      kind: 'bad-payload',
+      detail:
+        'Valid JSON, but not a league snapshot. Make sure you opened the link ' +
+        'from this page (it requests the draft views) while logged in to ESPN.',
     };
   }
 }

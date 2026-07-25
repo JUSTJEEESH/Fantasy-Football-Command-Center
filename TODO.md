@@ -5,7 +5,7 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 513 unit/integration tests + 49 browser tests passing.
+network switched off. 520 unit/integration tests + 52 browser tests passing.
 
 Real ADP, real projections and real bye weeks now ship in the build — the board
 no longer needs a CSV to exist. Verified against the live deployment: 600
@@ -88,8 +88,10 @@ in the meantime.
 - [x] ESPN league link: draft-order import + live pick-following in the war
       room, matching by ESPN player id. Requires the league set to publicly
       viewable; Test Connection verifies CORS from the real browser.
-- [ ] Confirm live sync against the real league (needs the league id + public
-      visibility — a Test Connection tap after linking)
+- [x] Private-league paste path: draft order and live picks via copy-paste from
+      the user's own logged-in tab — no visibility change, no credentials
+- [ ] Try the paste flow against the real league (open the link from Settings
+      while logged in to ESPN, paste, confirm the order imports)
 - [x] Briefing leads with news about players in your draft range, ADP-stamped
 - [x] ADP trend series: each deploy snapshots daily ADP and republishes the
       history; plan page shows week-over-week market movers once 3+ days accrue

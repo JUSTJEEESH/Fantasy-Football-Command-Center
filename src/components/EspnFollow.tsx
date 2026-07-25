@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   fetchEspnLeague,
+  parsePastedSnapshot,
   planSync,
+  snapshotUrl,
+  type EspnLeagueSnapshot,
   type SyncPlan,
 } from '@/lib/sources/espn-league';
 import type { DraftAction } from '@/lib/engine/draft-state';
@@ -40,11 +43,45 @@ export function EspnFollow({
   const [message, setMessage] = useState<string | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
   const [applied, setApplied] = useState(0);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
 
   // The poll reads current state through a ref: a setInterval closure holding
   // a stale DraftState would re-apply picks it already made.
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  /** One snapshot in, board caught up — identical for fetched and pasted. */
+  const applySnapshot = useCallback(
+    (snapshot: EspnLeagueSnapshot): 'ok' | 'stop' => {
+      const plan: SyncPlan = planSync(stateRef.current, snapshot, players);
+      setLastSyncAt(new Date());
+
+      switch (plan.status) {
+        case 'in-sync':
+          setMessage(null);
+          return 'ok';
+        case 'apply':
+          for (const action of plan.actions) dispatch(action);
+          setApplied((n) => n + plan.count);
+          setMessage(null);
+          return 'ok';
+        case 'unmatched':
+          for (const action of plan.actions) dispatch(action);
+          setApplied((n) => n + plan.count);
+          setMessage(
+            `ESPN pick ${plan.overallPick} is a player not on your board ` +
+              `(ESPN id ${plan.espnPlayerId}). Record that pick manually — sync will ` +
+              'resume on its own once the pick exists locally.',
+          );
+          return 'ok';
+        case 'conflict':
+          setMessage(plan.detail);
+          return 'stop';
+      }
+    },
+    [players, dispatch],
+  );
 
   const syncOnce = useCallback(async (): Promise<'ok' | 'stop'> => {
     const leagueId = league.espnLeagueId;
@@ -56,33 +93,22 @@ export function EspnFollow({
       // A blocked or private league will not fix itself between polls.
       return result.kind === 'blocked' ? 'ok' : 'stop';
     }
+    return applySnapshot(result.snapshot);
+  }, [league.espnLeagueId, league.season, applySnapshot]);
 
-    const plan: SyncPlan = planSync(stateRef.current, result.snapshot, players);
-    setLastSyncAt(new Date());
-
-    switch (plan.status) {
-      case 'in-sync':
-        setMessage(null);
-        return 'ok';
-      case 'apply':
-        for (const action of plan.actions) dispatch(action);
-        setApplied((n) => n + plan.count);
-        setMessage(null);
-        return 'ok';
-      case 'unmatched':
-        for (const action of plan.actions) dispatch(action);
-        setApplied((n) => n + plan.count);
-        setMessage(
-          `ESPN pick ${plan.overallPick} is a player not on your board ` +
-            `(ESPN id ${plan.espnPlayerId}). Record that pick manually — sync will ` +
-            'resume on its own once the pick exists locally.',
-        );
-        return 'ok';
-      case 'conflict':
-        setMessage(plan.detail);
-        return 'stop';
+  const handlePaste = () => {
+    const result = parsePastedSnapshot(pasteText);
+    if (!result.ok) {
+      setMessage(result.detail);
+      return;
     }
-  }, [league.espnLeagueId, league.season, players, dispatch]);
+    const before = stateRef.current.picks.length;
+    applySnapshot(result.snapshot);
+    // Applying mutates via dispatch, which lands next render; report from the
+    // plan's own arithmetic instead of re-reading stale state.
+    const caughtUp = result.snapshot.picks.length - before;
+    if (caughtUp >= 0) setPasteText('');
+  };
 
   useEffect(() => {
     if (!following) return;
@@ -133,7 +159,9 @@ export function EspnFollow({
           <p className="text-xs text-[var(--muted)]">
             {following
               ? `Live — checking every 12s${lastSyncAt ? `, last ${lastSyncAt.toLocaleTimeString()}` : ''}${applied > 0 ? ` · ${applied} picks synced` : ''}`
-              : 'Records the other teams’ picks for you as they happen.'}
+              : applied > 0
+                ? `${applied} picks synced${lastSyncAt ? ` · last ${lastSyncAt.toLocaleTimeString()}` : ''}`
+                : 'Records the other teams’ picks for you as they happen.'}
           </p>
         </div>
         <button
@@ -152,6 +180,42 @@ export function EspnFollow({
         <p className="rounded-lg bg-[var(--warn)]/10 px-3 py-2 text-sm text-[var(--warn)]">
           {message}
         </p>
+      )}
+
+      {/* The private-league path: the app cannot carry your ESPN login, but
+          your own logged-in tab can. Open the data link, copy, paste — every
+          pick made so far lands at once. */}
+      <button
+        type="button"
+        onClick={() => setPasteOpen((o) => !o)}
+        className="text-xs text-[var(--muted)] underline underline-offset-2"
+      >
+        {pasteOpen ? 'Hide paste sync' : 'League private? Paste to sync'}
+      </button>
+      {pasteOpen && (
+        <div className="space-y-2 text-xs text-[var(--muted)]">
+          <p>
+            In a tab where you are logged in to ESPN,{' '}
+            <a
+              className="text-sky-400 underline"
+              href={snapshotUrl(league.espnLeagueId, league.season)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              open the league data page
+            </a>
+            , copy everything, paste here. All picks made so far sync in one go.
+          </p>
+          <textarea
+            className="input h-20 w-full font-mono text-[11px]"
+            placeholder='Starts with {"draftDetail": …'
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+          />
+          <button type="button" className="btn-ghost w-full" onClick={handlePaste}>
+            Sync pasted picks
+          </button>
+        </div>
       )}
     </div>
   );
