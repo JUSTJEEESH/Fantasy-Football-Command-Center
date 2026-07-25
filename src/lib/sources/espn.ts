@@ -179,6 +179,9 @@ const ESPN_PPR_WEIGHTS: Partial<Record<keyof StatLine, number>> = {
   fumbles_lost: -2,
 };
 
+/** Only these positions score through the stat ids this adapter maps. */
+export const MAPPED_POSITIONS: Position[] = ['QB', 'RB', 'WR', 'TE'];
+
 export interface MappingVerdict {
   ok: boolean;
   /** How many player rows the check could be run against. */
@@ -187,6 +190,13 @@ export interface MappingVerdict {
   agreement: number;
   /** Median absolute difference, in fantasy points, across the sample. */
   medianError: number;
+  /**
+   * Per-position agreement. When the mapping breaks, it almost never breaks
+   * uniformly — a renumbered reception id wrecks WR and RB while leaving QB
+   * intact. Reporting the split turns "something is wrong" into "this is what
+   * is wrong", which is the difference between a fixable build and a mystery.
+   */
+  byPosition: Array<{ position: Position; sampleSize: number; agreement: number }>;
   reason?: string;
 }
 
@@ -198,19 +208,35 @@ export interface MappingVerdict {
  *
  * A skipped or half-matched mapping cannot pass this: leaving out a scoring
  * stat leaves its whole contribution missing from the reconstruction.
+ *
+ * The sample is restricted to the positions the mapping actually covers.
+ * Kickers and defenses score through an entirely separate family of stat ids
+ * that this adapter does not map and could not use — field goals by distance,
+ * sacks, points allowed. Their rows reconstruct to roughly zero against a real
+ * total, which is not evidence about the mapping under test; including them
+ * just buries the signal. (The first live run failed at 81% agreement with a
+ * median error of 0.6 points — a mapping that is plainly correct, outvoted by
+ * the ~16% of the board that is kickers and defenses.) They are excluded from
+ * the proof AND from the published projections, since an unscoreable
+ * projection is no projection at all.
  */
 export function verifyStatMapping(
-  rows: Array<{ stats: Record<string, number>; appliedTotal: number }>,
+  rows: Array<{ stats: Record<string, number>; appliedTotal: number; position?: Position }>,
 ): MappingVerdict {
   // Rows with no scoring production carry no information about the mapping —
   // 0 reconstructs to 0 under any mapping at all.
-  const usable = rows.filter((r) => Math.abs(r.appliedTotal) > 20);
+  const usable = rows.filter(
+    (r) =>
+      Math.abs(r.appliedTotal) > 20 &&
+      (r.position === undefined || MAPPED_POSITIONS.includes(r.position)),
+  );
   if (usable.length < 25) {
     return {
       ok: false,
       sampleSize: usable.length,
       agreement: 0,
       medianError: Number.NaN,
+      byPosition: [],
       reason:
         `Only ${usable.length} scoring rows available; too few to confirm the ` +
         'stat mapping. Projections withheld.',
@@ -218,6 +244,7 @@ export function verifyStatMapping(
   }
 
   const errors: number[] = [];
+  const perPosition = new Map<Position, { n: number; agreed: number }>();
   let agreed = 0;
   for (const row of usable) {
     let total = 0;
@@ -231,24 +258,40 @@ export function verifyStatMapping(
     // 2% of the total, floored at 2 points, absorbs ESPN's rounding and any
     // fringe scoring category (return TDs, 2-pointers) without absorbing a
     // genuinely misassigned stat id, which shifts totals by far more.
-    if (error <= Math.max(2, Math.abs(row.appliedTotal) * 0.02)) agreed++;
+    const within = error <= Math.max(2, Math.abs(row.appliedTotal) * 0.02);
+    if (within) agreed++;
+
+    if (row.position) {
+      const bucket = perPosition.get(row.position) ?? { n: 0, agreed: 0 };
+      bucket.n++;
+      if (within) bucket.agreed++;
+      perPosition.set(row.position, bucket);
+    }
   }
 
   errors.sort((a, b) => a - b);
   const medianError = errors[Math.floor(errors.length / 2)] ?? Number.NaN;
   const agreement = agreed / usable.length;
+  const byPosition = [...perPosition.entries()]
+    .map(([position, b]) => ({ position, sampleSize: b.n, agreement: b.agreed / b.n }))
+    .sort((a, b) => a.position.localeCompare(b.position));
 
   return {
     ok: agreement >= 0.9,
     sampleSize: usable.length,
     agreement,
     medianError,
+    byPosition,
     reason:
       agreement >= 0.9
         ? undefined
         : `Reconstructed ESPN's own point totals for only ${(agreement * 100).toFixed(0)}% ` +
-          `of ${usable.length} players (median error ${medianError.toFixed(1)} pts). ` +
-          'The stat-id mapping no longer matches what ESPN is sending, so ' +
+          `of ${usable.length} scoring players at ${MAPPED_POSITIONS.join('/')} ` +
+          `(median error ${medianError.toFixed(1)} pts; by position ` +
+          byPosition
+            .map((b) => `${b.position} ${(b.agreement * 100).toFixed(0)}%`)
+            .join(', ') +
+          '). The stat-id mapping no longer matches what ESPN is sending, so ' +
           'projections were dropped rather than published wrong.',
   };
 }
@@ -425,11 +468,19 @@ export function buildRows(
 
   // Pass one: collect every projection row, so the mapping can be judged on
   // the whole population before any of it is trusted.
-  const proofRows: Array<{ stats: Record<string, number>; appliedTotal: number }> = [];
+  const proofRows: Array<{
+    stats: Record<string, number>;
+    appliedTotal: number;
+    position?: Position;
+  }> = [];
   for (const player of parsed) {
     const projection = seasonProjection(player, ctx.season);
     if (projection?.stats && projection.appliedTotal != null) {
-      proofRows.push({ stats: projection.stats, appliedTotal: projection.appliedTotal });
+      proofRows.push({
+        stats: projection.stats,
+        appliedTotal: projection.appliedTotal,
+        position: POSITION_BY_ID[player.defaultPositionId ?? -1],
+      });
     }
   }
   const mapping = verifyStatMapping(proofRows);
@@ -464,7 +515,10 @@ export function buildRows(
     const rank = player.draftRanksByRankType?.PPR?.rank;
     if (rank != null && rank > 0) row.draftRank = rank;
 
-    if (mapping.ok) {
+    // Kickers and defenses are deliberately left without projections: their
+    // scoring runs through stat ids this adapter does not map, so anything
+    // produced for them would be a fabrication wearing a projection's clothes.
+    if (mapping.ok && MAPPED_POSITIONS.includes(position)) {
       const projection = seasonProjection(player, ctx.season);
       if (projection?.stats) {
         const line = toStatLine(projection.stats);

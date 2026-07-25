@@ -98,17 +98,25 @@ async function buildPlayers(): Promise<PlayerPack> {
   // Rank by Sleeper's own ordering, which puts fantasy-relevant players first.
   // Players without a rank sort last rather than being dropped, so a rookie
   // Sleeper has not ranked yet is still searchable.
-  const ranked = result.items
+  const sorted = result.items
     .filter((p) => p.nflTeam)
-    .map((p, index) => ({ player: p, rank: index }))
     .sort((a, b) => {
-      const ra = a.player.searchRank ?? Number.MAX_SAFE_INTEGER;
-      const rb = b.player.searchRank ?? Number.MAX_SAFE_INTEGER;
+      const ra = a.searchRank ?? Number.MAX_SAFE_INTEGER;
+      const rb = b.searchRank ?? Number.MAX_SAFE_INTEGER;
       return ra - rb;
-    })
-    .slice(0, PLAYER_LIMIT);
+    });
 
-  const players: PlayerPackEntry[] = ranked.map(({ player }) => ({
+  // Take a floor per position BEFORE filling the rest by overall rank.
+  //
+  // A flat top-600 cut looks reasonable and is not: Sleeper ranks team
+  // defenses far down its popularity ordering, so every single defense fell
+  // outside the cut. The first dress rehearsal drafted twelve rosters and not
+  // one of them could field the DST this league requires — the position simply
+  // was not on the board. Any position a league can start has to be present in
+  // quantity regardless of how a source likes to sort things.
+  const ranked = takeWithPositionFloors(sorted, PLAYER_LIMIT);
+
+  const players: PlayerPackEntry[] = ranked.map((player) => ({
     id: `${player.position}-${searchKey(player.fullName)}-${player.externalId}`,
     name: player.fullName,
     position: player.position,
@@ -120,10 +128,48 @@ async function buildPlayers(): Promise<PlayerPack> {
     sleeperRank: player.searchRank,
   }));
 
-  console.log(`  ✓ ${players.length} players (of ${result.items.length} fetched)`);
+  const mix = players.reduce<Record<string, number>>((acc, p) => {
+    acc[p.position] = (acc[p.position] ?? 0) + 1;
+    return acc;
+  }, {});
+  console.log(
+    `  ✓ ${players.length} players (of ${result.items.length} fetched) — ` +
+      Object.entries(mix)
+        .sort()
+        .map(([pos, n]) => `${pos} ${n}`)
+        .join(', '),
+  );
+
+  // A position that a league can start must never be empty or nearly so. This
+  // is the guard the first dress rehearsal needed and did not have: twelve
+  // rosters were built with no defense on any of them, and nothing anywhere
+  // complained, because "600 players" looked like plenty.
+  const thin = (Object.keys(POSITION_FLOORS) as Position[]).filter(
+    (pos) => (mix[pos] ?? 0) < Math.min(POSITION_FLOORS[pos], 24),
+  );
+  if (thin.length > 0) {
+    for (const pos of thin) {
+      console.error(
+        `  ✗ only ${mix[pos] ?? 0} ${pos} in the pack — a 12-team league cannot ` +
+          'fill its lineup from this board.',
+      );
+    }
+  }
 
   const sources: PlayerPack['sources'] = [
-    { key: 'sleeper', name: 'Sleeper', ok: true, itemCount: players.length },
+    {
+      key: 'sleeper',
+      name: 'Sleeper',
+      ok: thin.length === 0,
+      itemCount: players.length,
+      ...(thin.length > 0
+        ? {
+            error:
+              `Too few players at ${thin.join(', ')} for a 12-team league to ` +
+              'field a legal lineup.',
+          }
+        : {}),
+    },
   ];
 
   // Sleeper is the spine — it has the identities, teams, injury designations
@@ -138,6 +184,51 @@ async function buildPlayers(): Promise<PlayerPack> {
     season: SEASON,
     players,
   };
+}
+
+/**
+ * Enough of each position that a 12-team league can always fill its lineup,
+ * with room to draft backups and to have players taken off the board.
+ *
+ * These are floors, not quotas: whatever budget is left after satisfying them
+ * is filled by overall rank, so the board still reflects real draft relevance.
+ * There are only 32 defenses and 32 starting kickers in the league, so those
+ * floors take essentially all of them — which is correct, since one of each is
+ * a required starter for all twelve teams.
+ */
+export const POSITION_FLOORS: Record<Position, number> = {
+  QB: 40,
+  RB: 90,
+  WR: 110,
+  TE: 45,
+  K: 32,
+  DST: 32,
+};
+
+export function takeWithPositionFloors<T extends { position: Position }>(
+  sortedByRank: T[],
+  limit: number,
+): T[] {
+  const taken = new Set<T>();
+  const remaining: Record<string, number> = { ...POSITION_FLOORS };
+
+  // Pass one: satisfy the floors, still in rank order within each position.
+  for (const player of sortedByRank) {
+    const left = remaining[player.position];
+    if (left !== undefined && left > 0) {
+      taken.add(player);
+      remaining[player.position] = left - 1;
+    }
+  }
+
+  // Pass two: spend whatever is left on the best players still available.
+  for (const player of sortedByRank) {
+    if (taken.size >= limit) break;
+    taken.add(player);
+  }
+
+  // Preserve overall rank order in the output.
+  return sortedByRank.filter((p) => taken.has(p));
 }
 
 /**
@@ -181,16 +272,21 @@ async function mergeEspn(
     });
   } else {
     const mapping = board.mapping;
+    const split = (mapping?.byPosition ?? [])
+      .map((b) => `${b.position} ${(b.agreement * 100).toFixed(0)}% of ${b.sampleSize}`)
+      .join(', ');
     if (mapping?.ok) {
       console.log(
         `  ✓ ${board.items.length} players; stat mapping confirmed against ESPN's own ` +
           `totals on ${mapping.sampleSize} rows (${(mapping.agreement * 100).toFixed(1)}% agreement, ` +
           `median error ${mapping.medianError.toFixed(2)} pts)`,
       );
+      if (split) console.log(`      by position: ${split}`);
     } else {
       // Loud on purpose. This is the branch where ESPN changed something and
       // the projections silently would have been wrong.
       console.error(`  ⚠ ${mapping?.reason ?? 'Stat mapping could not be verified.'}`);
+      if (split) console.error(`      by position: ${split}`);
     }
 
     const index = new Map<string, EspnPlayerRow>();
@@ -497,7 +593,14 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('build:data crashed:', err);
-  process.exit(1);
-});
+// Only run when invoked as a script. The pack-shaping helpers above are
+// imported by tests, and importing a module must not kick off a network build.
+const invokedDirectly =
+  process.argv[1] !== undefined && process.argv[1].includes('build-data');
+
+if (invokedDirectly) {
+  main().catch((err) => {
+    console.error('build:data crashed:', err);
+    process.exit(1);
+  });
+}

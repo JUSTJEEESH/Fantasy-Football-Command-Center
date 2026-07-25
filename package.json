@@ -2,7 +2,7 @@
   "name": "fantasy-coach",
   "version": "0.1.0",
   "private": true,
-  "description": "FANTASY COACH — personal AI fantasy football intelligence platform",
+  "description": "FANTASY COACH \u2014 personal AI fantasy football intelligence platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -20,7 +20,8 @@
     "build:static": "tsx scripts/build-static.ts",
     "preview:static": "tsx scripts/serve-static.ts",
     "test:e2e:ci": "playwright test --config=playwright.ci.config.ts",
-    "build:data": "tsx scripts/build-data.ts"
+    "build:data": "tsx scripts/build-data.ts",
+    "rehearse": "tsx scripts/rehearse.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

@@ -21,21 +21,22 @@ export const DEFAULT_RSS_SOURCES: Array<
   SourceDescriptor & { url: string; altUrls?: string[] }
 > = [
   {
-    key: 'espn_nfl',
-    name: 'ESPN NFL',
+    // ESPN's NFL RSS is retired. Verified on a live build: all three of its
+    // documented endpoints answer HTTP 200 with a well-formed feed document
+    // containing zero items — which is why it read as a healthy source for so
+    // long. Replaced with the league's own feed rather than left in the list as
+    // a permanently red row.
+    key: 'nfl_com',
+    name: 'NFL.com',
     type: 'rss',
-    // The NFL-specific feed answers 200 with a valid but empty document, which
-    // is why builds have been reporting zero items from ESPN. The alternates
-    // are tried in order and whichever returns items is the one used; the build
-    // log and the source panel both name it, so this never fails silently.
-    url: 'https://www.espn.com/espn/rss/nfl/news',
-    altUrls: [
-      'https://www.espn.com/espn/rss/news',
-      'https://www.espn.com/espn/rss/nfl/news?format=rss',
-    ],
-    reliability: 0.88,
+    url: 'https://www.nfl.com/feeds/rss/news',
+    altUrls: ['https://www.nfl.com/rss/rsslanding?searchString=home'],
+    reliability: 0.9,
     updateFrequencyMin: 15,
-    limitations: 'Headline and summary only; not fantasy-specific, so most items filter out as noise.',
+    limitations:
+      'Official league feed: authoritative on transactions and injury ' +
+      'designations, slower and more conservative than the beat writers on ' +
+      'anything not yet official.',
     requiresCredential: false,
     termsNote: 'Public RSS feed published for syndication. Bodies are never fetched or stored.',
   },

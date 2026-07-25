@@ -164,6 +164,66 @@ describe('ESPN stat mapping verification', () => {
     expect(verdict.reason).toMatch(/too few/i);
   });
 
+  it('is not dragged under by kickers and defenses it never claimed to map', () => {
+    // This is the first live run, reproduced. The mapping was correct — median
+    // error 0.6 points — but ~16% of the board is K and DST, which score
+    // through stat ids this adapter does not map, so they reconstructed to
+    // roughly nothing and voted the verdict down to 81%.
+    const skill = fixturePayload(60).map((e) => {
+      const stats = e.player.stats as Array<{ statSourceId: number; statSplitTypeId: number; stats: Record<string, number>; appliedTotal: number }>;
+      const season = stats.find((s) => s.statSourceId === 1 && s.statSplitTypeId === 0)!;
+      const positionId = e.player.defaultPositionId as number;
+      const position = ({ 1: 'QB', 2: 'RB', 3: 'WR' } as const)[positionId as 1 | 2 | 3];
+      return { stats: season.stats, appliedTotal: season.appliedTotal, position };
+    });
+
+    // Kickers: real point totals, and stat ids that appear nowhere in the map.
+    const kickers = Array.from({ length: 14 }, () => ({
+      stats: { '83': 25, '84': 3, '86': 40 },
+      appliedTotal: 130,
+      position: 'K' as const,
+    }));
+
+    expect(verifyStatMapping([...skill, ...kickers]).ok).toBe(true);
+
+    // And the same sample judged without the position filter is exactly the
+    // false alarm that shipped: high agreement among the rows under test,
+    // dragged below the bar by rows that were never under test.
+    const unfiltered = verifyStatMapping(
+      [...skill, ...kickers].map(({ stats, appliedTotal }) => ({ stats, appliedTotal })),
+    );
+    expect(unfiltered.ok).toBe(false);
+  });
+
+  it('still fails when a mapped position genuinely breaks', () => {
+    // The position filter must not become a way to pass by ignoring bad news.
+    const broken = fixturePayload(60, (stats) => {
+      const moved = { ...stats };
+      if (moved['53'] !== undefined) {
+        moved['41'] = moved['53'];
+        delete moved['53'];
+      }
+      return moved;
+    }).map((e) => {
+      const stats = e.player.stats as Array<{ statSourceId: number; statSplitTypeId: number; stats: Record<string, number>; appliedTotal: number }>;
+      const season = stats.find((s) => s.statSourceId === 1 && s.statSplitTypeId === 0)!;
+      const positionId = e.player.defaultPositionId as number;
+      return {
+        stats: season.stats,
+        appliedTotal: season.appliedTotal,
+        position: ({ 1: 'QB', 2: 'RB', 3: 'WR' } as const)[positionId as 1 | 2 | 3],
+      };
+    });
+
+    const verdict = verifyStatMapping(broken);
+    expect(verdict.ok).toBe(false);
+    // And it names which positions broke, so the next person knows where to look.
+    const wr = verdict.byPosition.find((b) => b.position === 'WR');
+    const qb = verdict.byPosition.find((b) => b.position === 'QB');
+    expect(wr!.agreement).toBeLessThan(0.5);   // receptions moved — WRs wrecked
+    expect(qb!.agreement).toBeGreaterThan(0.9); // QBs barely catch passes
+  });
+
   it('is not fooled by rows with no production', () => {
     // Zero reconstructs to zero under any mapping at all, so a payload made
     // entirely of empty rows must not read as a confirmed mapping.
