@@ -125,6 +125,9 @@ export default function HomePage() {
         <Link href="/draft" className="btn-primary flex items-center justify-center">
           Draft mode
         </Link>
+        <Link href="/plan" className="btn-ghost flex items-center justify-center">
+          Draft plan
+        </Link>
         <Link href="/players" className="btn-ghost flex items-center justify-center">
           Player board
         </Link>

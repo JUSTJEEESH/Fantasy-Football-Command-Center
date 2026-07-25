@@ -4,6 +4,39 @@ All notable changes to Fantasy Coach. Newest first.
 
 ## [Unreleased]
 
+### 2026-07-25 — The edge, made explicit
+
+**Added**
+- **A Draft plan page** — the cheat sheet. Your league's rules translated into
+  what they mean, where the market misprices each position for you, the players
+  worth more than they cost, and the ones to let somebody else take.
+- **Market analysis** (`src/lib/engine/market.ts`) — ranks players by value
+  under YOUR scoring and compares that to where they actually go. On real data
+  for Bay Islands: RB +1.2 rounds, QB +1.0, WR −0.2, **TE −3.7**. Every fade it
+  produced was a tight end, which is the zero-required-TE rule showing up as
+  arithmetic rather than as a hunch.
+- Board context reaches the news feed and the plan alike: ADP, tier, in reach,
+  already gone, or yours.
+
+**Fixed**
+- **The default league was a trap with teeth.** Settings defaulted to a generic
+  12-team PPR template — required TE slot, 4-point passing TDs. Building a board
+  before loading the real league silently scored every player under the wrong
+  rules and *inverted* the league's biggest edge: the plan page listed seven
+  tight ends as targets instead of saying never to spend a pick on one. Both
+  answers are correct for the league they were given, and nothing warned you.
+  Bay Islands is now the default.
+
+**Refused**
+- Market analysis runs only on players with a real projection. A points value
+  derived from ADP is a function of ADP, so comparing the two would measure its
+  own arithmetic.
+- It also ignores an ADP that is really a placeholder. ESPN assigns a
+  near-last-pick ADP to everyone it rarely sees drafted: 220 of 358 players
+  stacked into the 160–180 buckets against 8–14 per bucket elsewhere, owned in
+  0–12% of leagues. Ranking those against each other dragged the quarterback
+  verdict from +1.0 rounds to −3.7 on pure artifact.
+
 ### 2026-07-25 — Real ADP, projections and bye weeks
 
 **Added**

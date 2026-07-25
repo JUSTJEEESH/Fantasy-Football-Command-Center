@@ -7,6 +7,11 @@ import { usePathname } from 'next/navigation';
  * Bottom tab bar — thumb-reachable on a phone, which is where this is used.
  * Draft is centre and visually emphasised because on August 30 it is the only
  * tab that matters.
+ *
+ * Five is the limit before the targets get too small for a thumb, so the
+ * player board is reached from Home rather than given a tab of its own — it is
+ * a browsing surface, and the four here are the ones you open with a decision
+ * to make.
  */
 const TABS: ReadonlyArray<{
   href: string;
@@ -15,9 +20,9 @@ const TABS: ReadonlyArray<{
   primary?: boolean;
 }> = [
   { href: '/', label: 'Home', icon: '◆' },
-  { href: '/news', label: 'News', icon: '◈' },
+  { href: '/plan', label: 'Plan', icon: '◇' },
   { href: '/draft', label: 'Draft', icon: '▲', primary: true },
-  { href: '/players', label: 'Players', icon: '◉' },
+  { href: '/news', label: 'News', icon: '◈' },
   { href: '/team', label: 'Team', icon: '▣' },
 ];
 

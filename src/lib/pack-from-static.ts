@@ -285,6 +285,9 @@ function cardFor(entry: PlayerPackEntry, league: League, fetchedAt: string): Pla
   if (entry.espnRank !== undefined) {
     card.consensusRank = entry.espnRank;
   }
+  if (entry.percentOwned !== undefined) {
+    card.percentOwned = entry.percentOwned;
+  }
 
   // Projections: score the raw stat line under THIS league's rules. This is
   // the whole reason the pack ships stats instead of points.
@@ -294,6 +297,7 @@ function cardFor(entry: PlayerPackEntry, league: League, fetchedAt: string): Pla
       const points = scoreStatLine(parsed.data, league.scoring, entry.position);
       if (Number.isFinite(points)) {
         card.projectedPoints = Math.round(points * 10) / 10;
+        card.projectionSource = 'projection';
         // Range, not certainty. A wide band is the honest representation of a
         // single-model point estimate, and the engine already reads floor and
         // ceiling separately for its upside and safe-pick flavors.
@@ -305,6 +309,7 @@ function cardFor(entry: PlayerPackEntry, league: League, fetchedAt: string): Pla
 
   if (card.projectedPoints === undefined && entry.adp !== undefined) {
     card.projectedPoints = estimatePointsFromAdp(entry.adp, entry.position);
+    card.projectionSource = 'adp-estimate';
   }
 
   // Nothing beyond the designation itself is asserted; the label exists so the

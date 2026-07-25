@@ -525,23 +525,21 @@ function FileInput({
   );
 }
 
-const DEFAULT_LEAGUE: League = {
-  id: 'my-league',
-  name: 'My League',
-  platform: 'manual',
-  season: 2026,
-  leagueType: 'redraft',
-  teamCount: 12,
-  draftType: 'snake',
-  // Deliberately null rather than 1. Defaulting to a seat means the app would
-  // happily build a whole draft board around a slot the user was never
-  // assigned, and they would have no reason to notice.
-  draftSlot: null,
-  rosterSlots: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1, DST: 1 },
-  benchSize: 6,
-  irSlots: 1,
-  scoring: SCORING_PRESETS.ppr(),
-  adpFormat: 'ppr',
-};
+/**
+ * The league this app is for.
+ *
+ * Deliberately Bay Islands rather than a generic 12-team PPR template. The
+ * generic default was a trap with teeth: it has a required TE slot and
+ * standard scoring, so building a board before loading the real league
+ * silently scored every player under the wrong rules — and inverted the single
+ * biggest edge this league has. The plan page went from "never spend a pick on
+ * a tight end" to listing seven tight ends as targets, with no warning, because
+ * both answers are correct for the league they were given.
+ *
+ * The draft slot stays null: that is genuinely unknown until the August 8
+ * party, and guessing a seat would build a whole board around a position
+ * nobody was assigned.
+ */
+const DEFAULT_LEAGUE: League = BAY_ISLANDS;
 
 

@@ -5,7 +5,7 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 455 unit/integration tests + 34 browser tests passing.
+network switched off. 469 unit/integration tests + 39 browser tests passing.
 
 Real ADP, real projections and real bye weeks now ship in the build — the board
 no longer needs a CSV to exist. Verified against the live deployment: 600
@@ -80,6 +80,10 @@ in the meantime.
 - [x] News items carry board context (ADP, tier, in reach / gone / yours)
 - [x] "My board" filter actually filters to your board
 - [x] Surname linking refuses a match preceded by another person's first name
+- [x] Draft plan page: rules, positional mispricing, targets, fades, bye stacks
+- [x] Market analysis with real ADP and real projections only
+- [x] Bay Islands is the default league — no way to build a board under the
+      wrong rules by accident
 - [ ] Trend detection over the ADP/ranking time series
 - [x] ESPN's NFL RSS confirmed retired (all three endpoints: HTTP 200, zero
       items). Replaced with NFL.com; RotoWire added as a fantasy-specific wire.

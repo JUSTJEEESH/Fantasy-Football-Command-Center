@@ -212,6 +212,13 @@ export interface PlayerCard extends PlayerRef {
 
   /** Season-long projected fantasy points in THIS league's scoring. */
   projectedPoints?: number;
+  /**
+   * Where `projectedPoints` came from. This matters more than it looks: a
+   * points value derived from ADP is a monotone function of ADP, so any
+   * analysis comparing value against ADP would find exactly zero signal in it
+   * — and would be measuring its own arithmetic if it pretended otherwise.
+   */
+  projectionSource?: 'projection' | 'adp-estimate';
   floorPoints?: number;
   ceilingPoints?: number;
   gamesProjected?: number;
@@ -221,6 +228,15 @@ export interface PlayerCard extends PlayerRef {
   adpStdev?: number;
   adpSource?: string;
   adpFetchedAt?: string;
+
+  /**
+   * Share of leagues rostering this player, where the source reports it.
+   *
+   * Doubles as the reliability signal for `adp`: platforms assign a
+   * near-last-pick ADP to everyone they rarely see drafted, so a low ownership
+   * figure means the ADP is a placeholder rather than a real market price.
+   */
+  percentOwned?: number;
 
   consensusRank?: number;
   positionRank?: number;

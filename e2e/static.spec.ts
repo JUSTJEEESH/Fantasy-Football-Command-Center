@@ -46,8 +46,14 @@ test('static build: full draft flow works', async ({ page, context }) => {
   await expect(page.getByText(/merged into \d+ events/)).toBeVisible();
   await expect(page.getByText('Needs your attention')).toBeVisible();
 
-  // Navigation between pages
-  await page.getByRole('link', { name: /Players/ }).click();
+  // Navigation between pages. The player board is reached from Home rather
+  // than from the tab bar — five tabs is the limit before the targets get too
+  // small for a thumb, and Plan earned one of them.
+  await page.getByRole('link', { name: /Plan/ }).first().click();
+  await expect(page.getByRole('heading', { name: 'Draft plan' })).toBeVisible();
+
+  await page.goto(`${SITE}/`);
+  await page.getByRole('link', { name: /Player board/ }).click();
   await expect(page.getByRole('heading', { name: 'Player board' })).toBeVisible();
 
   // Resource failures during the deliberate offline segment are expected — the
