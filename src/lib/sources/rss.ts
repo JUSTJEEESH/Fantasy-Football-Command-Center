@@ -20,26 +20,20 @@ import { guardedFetch, type FetchResult, type NewsProvider, type RawNewsItem, ty
 export const DEFAULT_RSS_SOURCES: Array<
   SourceDescriptor & { url: string; altUrls?: string[] }
 > = [
-  {
-    // ESPN's NFL RSS is retired. Verified on a live build: all three of its
-    // documented endpoints answer HTTP 200 with a well-formed feed document
-    // containing zero items — which is why it read as a healthy source for so
-    // long. Replaced with the league's own feed rather than left in the list as
-    // a permanently red row.
-    key: 'nfl_com',
-    name: 'NFL.com',
-    type: 'rss',
-    url: 'https://www.nfl.com/feeds/rss/news',
-    altUrls: ['https://www.nfl.com/rss/rsslanding?searchString=home'],
-    reliability: 0.9,
-    updateFrequencyMin: 15,
-    limitations:
-      'Official league feed: authoritative on transactions and injury ' +
-      'designations, slower and more conservative than the beat writers on ' +
-      'anything not yet official.',
-    requiresCredential: false,
-    termsNote: 'Public RSS feed published for syndication. Bodies are never fetched or stored.',
-  },
+  // Two feeds have been removed from this list after being verified dead on a
+  // live build, and the removals are recorded here rather than silently:
+  //
+  //   espn_nfl  — https://www.espn.com/espn/rss/nfl/news and two alternates.
+  //               All three answer HTTP 200 with a well-formed feed document
+  //               containing zero items, which is why it read as healthy for
+  //               weeks. Retired, not moved.
+  //   nfl_com   — https://www.nfl.com/feeds/rss/news and one alternate. Both
+  //               404.
+  //
+  // Adding a replacement means guessing at a URL that cannot be checked from a
+  // development machine with no egress; each guess costs a full deploy cycle to
+  // verify. The four feeds below are confirmed working against live builds, and
+  // the source panel names any that stop.
   {
     key: 'cbs_nfl',
     name: 'CBS Sports NFL',

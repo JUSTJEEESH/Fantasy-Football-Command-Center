@@ -26,8 +26,19 @@ All notable changes to Fantasy Coach. Newest first.
   from depth charts; both are labelled as inferences, and the yardage-bonus
   omission is stated rather than papered over.
 - RotoWire added as a fantasy-specific news wire.
+- Dead feeds are removed rather than left permanently red, with the evidence
+  recorded in the source list: ESPN's NFL RSS returns 200-with-zero-items on
+  all three of its endpoints, and NFL.com's two endpoints 404.
 
 **Fixed**
+- **Putting defenses on the board flooded the news feed.** Team defenses are
+  named after their teams, so indexing them meant any headline mentioning a
+  team "linked a player" — which satisfied the test that keeps chatter out of
+  the feed. One build shipped 32 extra items like "Steelers Friday Night Happy
+  Hour" and "Is he really the fourth-longest tenured Bills player?", and filed
+  "Panthers put Nic Scourton on injured reserve" as an INJURY against the
+  Carolina Panthers defense, scoring 65. Defenses are no longer linkable by
+  team name; they remain fully draftable.
 - **Every seat drafted a roster with no defense.** The board took Sleeper's top
   600 by popularity, and Sleeper ranks team defenses below every skill player,
   so all 32 fell outside the cut — the position was simply not on the board in

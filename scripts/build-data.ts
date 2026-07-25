@@ -448,7 +448,7 @@ async function buildNews(players: PlayerPackEntry[]): Promise<NewsPack> {
   // Same pipeline the server path uses: dedup across sources, link players,
   // then classify with the linked player's relevance as an input.
   const index = buildPlayerNameIndex(
-    players.map((p) => ({ id: p.id, name: p.name })),
+    players.map((p) => ({ id: p.id, name: p.name, position: p.position })),
     searchKey,
   );
   const playerById = new Map(players.map((p) => [p.id, p]));

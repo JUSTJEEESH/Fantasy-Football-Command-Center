@@ -379,13 +379,26 @@ export interface PlayerNameIndex {
 }
 
 export function buildPlayerNameIndex(
-  players: Array<{ id: string; name: string }>,
+  players: Array<{ id: string; name: string; position?: string }>,
   toKey: (name: string) => string,
 ): PlayerNameIndex {
   const byKey = new Map<string, string>();
   const byLastName = new Map<string, string[]>();
 
   for (const player of players) {
+    // Team defenses are named after their teams ("Carolina Panthers"), and a
+    // team name appears in a huge share of NFL headlines that have nothing to
+    // do with fantasy. Indexing them meant "Steelers Friday Night Happy Hour"
+    // linked the Steelers DST, which then satisfied the has-a-linked-player
+    // test that keeps chatter out of the feed — 32 junk items in one build.
+    // Worse, "Panthers put Nic Scourton on injured reserve" filed as an INJURY
+    // against the Carolina Panthers defense, which is not what happened.
+    //
+    // A defense is a fantasy asset, but it is never the subject of a news item
+    // in the way a player is. Linking it by team nickname buys nothing and
+    // costs the feed its signal.
+    if (player.position === 'DST') continue;
+
     byKey.set(toKey(player.name), player.id);
     const parts = player.name.trim().split(/\s+/);
     const last = parts[parts.length - 1];

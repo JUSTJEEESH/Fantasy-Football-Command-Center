@@ -306,8 +306,13 @@ export async function buildEvents(
   // Pull the latest ADP alongside each player so the impact score can weigh how
   // much the news matters — an ACL tear to the RB1 is not the same event as one
   // to a fourth-string back, and §7 requires player importance in the formula.
-  const players = await query<{ id: string; full_name: string; adp: string | null }>(
-    `SELECT p.id, p.full_name, a.adp
+  const players = await query<{
+    id: string;
+    full_name: string;
+    position: string;
+    adp: string | null;
+  }>(
+    `SELECT p.id, p.full_name, p.position, a.adp
        FROM players p
        LEFT JOIN LATERAL (
          SELECT adp FROM player_adp
@@ -322,7 +327,7 @@ export async function buildEvents(
   );
 
   const index = buildPlayerNameIndex(
-    players.map((p) => ({ id: p.id, name: p.full_name })),
+    players.map((p) => ({ id: p.id, name: p.full_name, position: p.position })),
     searchKey,
   );
 

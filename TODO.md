@@ -5,7 +5,7 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 418 unit/integration tests + 32 browser tests passing.
+network switched off. 423 unit/integration tests + 32 browser tests passing.
 
 Real ADP, real projections and real bye weeks now ship in the build — the board
 no longer needs a CSV to exist. Verified against the live deployment: 600
@@ -79,7 +79,10 @@ in the meantime.
 - [ ] Trend detection over the ADP/ranking time series
 - [x] ESPN's NFL RSS confirmed retired (all three endpoints: HTTP 200, zero
       items). Replaced with NFL.com; RotoWire added as a fantasy-specific wire.
-- [ ] Confirm NFL.com's feed is returning items on the next build
+- [x] NFL.com's feed 404s on both endpoints — removed. Four confirmed-working
+      feeds remain (CBS, Yahoo, ProFootballTalk, RotoWire).
+- [ ] Find a fifth feed. Needs a URL that can only be verified by deploying,
+      so it is worth batching with other work rather than guessing in isolation.
 
 ## Phase 8 — Coach layer ✅
 - [x] Intent router: 24 intents, NL variants, conversational context

@@ -395,6 +395,54 @@ describe('player linking', () => {
     expect(links.find((l) => l.playerId === 'p1')!.matchType).toBe('full');
   });
 
+  describe('team defenses are not linkable by team name', () => {
+    // Real headlines from a real build. Adding defenses to the draft board put
+    // team names into this index, and every one of these "linked a player" —
+    // which satisfied the has-a-linked-player test that keeps chatter out of
+    // the feed. One build shipped 32 items like these.
+    const withDefenses = buildPlayerNameIndex(
+      [
+        ...players.map((p) => ({ ...p, position: 'RB' })),
+        { id: 'd1', name: 'Carolina Panthers', position: 'DST' },
+        { id: 'd2', name: 'Pittsburgh Steelers', position: 'DST' },
+        { id: 'd3', name: 'Buffalo Bills', position: 'DST' },
+      ],
+      searchKey,
+    );
+
+    const chatter = [
+      'Steelers Friday Night Happy Hour: Training camp looms',
+      'Is he really the fourth-longest tenured Bills player?',
+      'Panthers owner David Tepper: We are a playoff team this year',
+    ];
+
+    for (const headline of chatter) {
+      it(`does not link: "${headline.slice(0, 44)}…"`, () => {
+        expect(linkPlayers(headline, withDefenses, searchKey)).toHaveLength(0);
+      });
+    }
+
+    it('does not file another team\'s player injury against the defense', () => {
+      // This one shipped as an INJURY event scoring 65, attached to the
+      // Carolina Panthers defense. Nic Scourton is not the Panthers defense.
+      const links = linkPlayers(
+        'Panthers put Nic Scourton on injured reserve',
+        withDefenses,
+        searchKey,
+      );
+      expect(links).toHaveLength(0);
+    });
+
+    it('still links real players when a team name is also present', () => {
+      const links = linkPlayers(
+        'Panthers activate Sample Runningback from the PUP list',
+        withDefenses,
+        searchKey,
+      );
+      expect(links.map((l) => l.playerId)).toEqual(['p1']);
+    });
+  });
+
   it('links an unambiguous last name with lower confidence', () => {
     const links = linkPlayers('Wideout expected to play Sunday', index, searchKey);
     const match = links.find((l) => l.playerId === 'p2');
