@@ -256,6 +256,12 @@ async function buildNews(players: PlayerPackEntry[]): Promise<NewsPack> {
 
     if (classified.classification === 'NOISE') continue;
 
+    // An item naming no fantasy-relevant player is only worth showing if it is
+    // genuinely big on its own terms — a coaching change, a major trade. A
+    // low-scoring item with nobody attached is a story about somebody you will
+    // never start, and it is what makes a feed feel like filler.
+    if (linkedPlayers.length === 0 && classified.impactScore < 45) continue;
+
     events.push({
       id: `evt-${events.length + 1}-${cluster.canonicalTitle.slice(0, 24).replace(/\W+/g, '-').toLowerCase()}`,
       headline: cluster.canonicalTitle,

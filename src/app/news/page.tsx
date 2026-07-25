@@ -406,12 +406,27 @@ function SourceFooter({ pack }: { pack: NewsPack }) {
       <ul className="mt-2 space-y-1">
         {pack.sources.map((source) => (
           <li key={source.key} className="flex items-baseline gap-2 text-[13px]">
-            <span className={source.ok ? 'text-[var(--accent)]' : 'text-[var(--danger)]'}>
-              {source.ok ? '✓' : '✗'}
+            {/* A feed that responded but returned nothing is not a success —
+                it usually means the URL moved. Showing it as a tick would hide
+                a broken source behind a healthy-looking list. */}
+            <span
+              className={
+                !source.ok
+                  ? 'text-[var(--danger)]'
+                  : source.itemCount === 0
+                    ? 'text-[var(--warn)]'
+                    : 'text-[var(--accent)]'
+              }
+            >
+              {!source.ok ? '✗' : source.itemCount === 0 ? '!' : '✓'}
             </span>
             <span className="flex-1">{source.name}</span>
             <span className="text-[var(--muted)]">
-              {source.ok ? `${source.itemCount} items` : (source.error ?? 'failed')}
+              {!source.ok
+                ? (source.error ?? 'failed')
+                : source.itemCount === 0
+                  ? 'responded but returned nothing'
+                  : `${source.itemCount} items`}
             </span>
           </li>
         ))}

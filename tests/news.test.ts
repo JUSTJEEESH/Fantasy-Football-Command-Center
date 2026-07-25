@@ -264,6 +264,11 @@ describe('classification (§6, §7)', () => {
       'NFL power rankings: where every team stands',
       'Best bets and odds boost for Week 1',
       'Start em sit em: fantasy advice for Week 1',
+      // Other sports and business items leak into general sports feeds and
+      // matched real rules: "MLB trade deadline" scored as a transaction.
+      'MLB trade deadline predictions and Aaron Rodgers reunites with a coach',
+      'The Green Bay Packers announce an operating loss for 2025',
+      'NBA free agency: where the biggest names land',
     ]) {
       expect(classify([['espn', headline]]).classification).toBe('NOISE');
     }
@@ -367,6 +372,36 @@ describe('player linking', () => {
     const match = links.find((l) => l.playerId === 'p2');
     expect(match?.matchType).toBe('last');
     expect(match!.confidence).toBeLessThan(0.95);
+  });
+
+  it('does not link a first name that is another player\'s surname', () => {
+    // Regression: "Patrick Mahomes" linked Tim Patrick on the word "patrick",
+    // filing a story against a player it never mentioned.
+    const withMahomes = buildPlayerNameIndex(
+      [
+        { id: 'mahomes', name: 'Patrick Mahomes' },
+        { id: 'patrick', name: 'Tim Patrick' },
+      ],
+      searchKey,
+    );
+    const links = linkPlayers(
+      'Patrick Mahomes fully cleared for training camp',
+      withMahomes,
+      searchKey,
+    );
+    expect(links.map((l) => l.playerId)).toEqual(['mahomes']);
+  });
+
+  it('still links a bare surname when it stands alone', () => {
+    const withMahomes = buildPlayerNameIndex(
+      [
+        { id: 'mahomes', name: 'Patrick Mahomes' },
+        { id: 'patrick', name: 'Tim Patrick' },
+      ],
+      searchKey,
+    );
+    const links = linkPlayers('Patrick returns to practice', withMahomes, searchKey);
+    expect(links.map((l) => l.playerId)).toEqual(['patrick']);
   });
 
   it('refuses to guess when a last name is ambiguous', () => {

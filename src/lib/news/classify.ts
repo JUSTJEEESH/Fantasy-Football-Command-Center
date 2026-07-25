@@ -113,12 +113,27 @@ const RULES: Rule[] = [
     terms: ['offensive coordinator', 'head coach', 'fired', 'hired', 'play caller'] },
 ];
 
-/** Terms that mark an item as having no fantasy relevance at all. */
+/**
+ * Terms that mark an item as having no fantasy relevance at all.
+ *
+ * The other-sport and business entries earn their place: a general NFL feed
+ * carries plenty of neither. "MLB trade deadline predictions" matched the trade
+ * rule and scored as a real transaction, and a story about a team's operating
+ * loss was surfaced as fantasy-relevant news. Both are noise by any reading.
+ */
 const NOISE_TERMS = [
   'ticket', 'jersey sales', 'stadium', 'anthem', 'arrested', 'lawsuit',
   'documentary', 'podcast', 'hall of fame', 'retirement ceremony', 'anniversary',
   'draft grade', 'mock draft', 'power rankings', 'best bets', 'odds boost',
   'fantasy advice', 'start em sit em', 'betting preview',
+  // Other sports leaking into a general sports feed.
+  'mlb', 'nba', 'nhl', 'wnba', 'premier league', 'world cup', 'ncaa tournament',
+  'formula 1', 'golf', 'tennis', 'ufc', 'boxing', 'nascar',
+  // Business and off-field items.
+  'operating loss', 'revenue', 'valuation', 'sponsorship', 'naming rights',
+  'ownership stake', 'sells minority', 'stock', 'earnings',
+  // Speculative filler.
+  'predictions', 'way too early', 'what if', 'debate', 'ranking the',
 ];
 
 const BREAKING_TERMS = [
@@ -363,18 +378,27 @@ export function linkPlayers(
   const words = normalized.split(' ');
   const found = new Map<string, { matchType: 'full' | 'last'; confidence: number }>();
 
-  // Full names: scan two- and three-word windows.
+  // Words already accounted for by a full-name match. Without this, a first
+  // name that happens to be another player's surname produces a confident,
+  // completely wrong link: "Patrick Mahomes" matched Tim Patrick on the word
+  // "patrick", and the story was filed against a player it never mentioned.
+  const consumed = new Set<number>();
+
+  // Full names: scan longest windows first so a three-word name wins over the
+  // two-word window inside it.
   for (let size = 3; size >= 2; size--) {
     for (let i = 0; i + size <= words.length; i++) {
       const candidate = words.slice(i, i + size).join(' ');
       const playerId = index.byKey.get(toKey(candidate));
-      if (playerId) found.set(playerId, { matchType: 'full', confidence: 0.95 });
+      if (!playerId) continue;
+      found.set(playerId, { matchType: 'full', confidence: 0.95 });
+      for (let offset = 0; offset < size; offset++) consumed.add(i + offset);
     }
   }
 
-  // Unambiguous last names, only if no full-name match already covers them.
-  for (const word of words) {
-    if (word.length < 4) continue;
+  // Unambiguous last names, ignoring any word already inside a full name.
+  words.forEach((word, i) => {
+    if (consumed.has(i) || word.length < 4) return;
     const matches = index.byLastName.get(toKey(word));
     if (matches && matches.length === 1) {
       const playerId = matches[0]!;
@@ -382,7 +406,7 @@ export function linkPlayers(
         found.set(playerId, { matchType: 'last', confidence: 0.7 });
       }
     }
-  }
+  });
 
   return [...found.entries()].map(([playerId, meta]) => ({ playerId, ...meta }));
 }
