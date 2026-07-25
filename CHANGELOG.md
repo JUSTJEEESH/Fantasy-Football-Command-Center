@@ -4,6 +4,35 @@ All notable changes to Fantasy Coach. Newest first.
 
 ## [Unreleased]
 
+### 2026-07-25 — Linked to the ESPN league itself
+
+**Added**
+- **ESPN league link** (`src/lib/sources/espn-league.ts`). Enter the league id
+  once in Settings, and: the draft order imports the moment ESPN publishes it
+  (tap your team, your slot is set); on draft night, **Follow ESPN draft** in
+  the war room polls the league's public feed every 12 seconds and records the
+  other teams' picks as they happen, so the recommendation is always computed
+  against the real board with no typing while the clock runs.
+- Picks match by **ESPN player id**, which the pack now carries end to end —
+  an id cannot confuse two players who share a surname.
+
+**The honest constraints, because they shape the feature**
+- A browser cannot send ESPN login cookies to another site (`Cookie` is a
+  forbidden fetch header — a rule of the web, not of this app). So the league
+  must be set to **publicly viewable** (ESPN → League Settings → Basic
+  Settings) for the link to work. That exposes rosters and picks, not anyone's
+  account. A private league gets that exact explanation, not a spinner.
+- Whether ESPN's CORS policy admits browser reads cannot be verified from the
+  development sandbox. The **Test connection** button runs the real request
+  from the user's own browser — the only place the answer matters — and
+  reports precisely what happened.
+- Sync never rewrites recorded history (a local-vs-ESPN disagreement is
+  reported as a conflict to resolve by hand), never guesses at a player id it
+  does not know (it halts at that pick, names it, and resumes once the pick is
+  recorded manually), and never ingests ESPN's placeholder picks (`playerId
+  0`). Manual entry keeps working untouched throughout — sync is an
+  accelerant, not a dependency.
+
 ### 2026-07-25 — The edge, made explicit
 
 **Added**

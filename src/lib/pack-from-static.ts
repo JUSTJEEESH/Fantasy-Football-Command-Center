@@ -288,6 +288,9 @@ function cardFor(entry: PlayerPackEntry, league: League, fetchedAt: string): Pla
   if (entry.percentOwned !== undefined) {
     card.percentOwned = entry.percentOwned;
   }
+  if (entry.espnId !== undefined) {
+    card.espnId = entry.espnId;
+  }
 
   // Projections: score the raw stat line under THIS league's rules. This is
   // the whole reason the pack ships stats instead of points.

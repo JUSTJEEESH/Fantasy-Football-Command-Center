@@ -307,6 +307,7 @@ async function mergeEspn(
         withAdp++;
       }
       if (row.draftRank !== undefined) player.espnRank = row.draftRank;
+      player.espnId = row.espnId;
       if (row.percentOwned !== undefined) player.percentOwned = row.percentOwned;
       if (row.projectedStats) {
         player.projectedStats = row.projectedStats as Record<string, number>;

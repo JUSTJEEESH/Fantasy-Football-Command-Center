@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { useDraft } from '@/hooks/useDraft';
 import { PickCard } from '@/components/PickCard';
 import { CoachBar } from '@/components/CoachBar';
+import { EspnFollow } from '@/components/EspnFollow';
 import { parseCommand, type CoachContext } from '@/lib/coach/intents';
 import { formatWhatIf, formatWhy, type CoachResponse } from '@/lib/coach/format';
 import { describePackFreshness } from '@/lib/draft-pack';
@@ -219,6 +220,13 @@ export default function DraftPage() {
           {freshness.label}
         </p>
       )}
+
+      <EspnFollow
+        league={pack.league}
+        state={state}
+        players={pack.players}
+        dispatch={draft.dispatch}
+      />
 
       <ClockStrip
         round={draft.round}

@@ -5,7 +5,7 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 484 unit/integration tests + 41 browser tests passing.
+network switched off. 498 unit/integration tests + 47 browser tests passing.
 
 Real ADP, real projections and real bye weeks now ship in the build — the board
 no longer needs a CSV to exist. Verified against the live deployment: 600
@@ -85,6 +85,11 @@ in the meantime.
 - [x] Market analysis with real ADP and real projections only
 - [x] Bay Islands is the default league — no way to build a board under the
       wrong rules by accident
+- [x] ESPN league link: draft-order import + live pick-following in the war
+      room, matching by ESPN player id. Requires the league set to publicly
+      viewable; Test Connection verifies CORS from the real browser.
+- [ ] Confirm live sync against the real league (needs the league id + public
+      visibility — a Test Connection tap after linking)
 - [ ] Trend detection over the ADP/ranking time series
 - [x] ESPN's NFL RSS confirmed retired (all three endpoints: HTTP 200, zero
       items). Replaced with NFL.com; RotoWire added as a fantasy-specific wire.
@@ -146,6 +151,6 @@ all of them; none is needed for August 30.
 | --- | --- | --- |
 | ~~**ADP data**~~ | ~~Draft Mode's advice quality depends on it entirely~~ | **Done** — ESPN ADP is fetched every build. Settings → *Use the shipped player board*. CSV import still overrides it. |
 | **Live egress** | Sandbox blocks all data hosts, so adapters are fixture-tested only | Run `pnpm doctor` locally |
-| **Draft slot** | The board cannot be built without it | Set it after your Aug 8 party — Draft → Seats |
+| **Draft slot** | The board cannot be built without it | After Aug 8: Settings → ESPN league → Test connection → tap your team. (Manual entry still works.) |
 | ~~**Projections**~~ | ~~Without them, points are estimated from ADP~~ | **Done** — ESPN season projections, re-scored under Bay Islands rules. Yardage bonuses are excluded and labelled. |
 | `ANTHROPIC_API_KEY` | Only affects wording, never advice | Optional |

@@ -19,6 +19,11 @@ import {
   savePack,
 } from '@/lib/draft-pack';
 import { BAY_ISLANDS } from '@/lib/leagues/bay-islands';
+import {
+  fetchEspnLeague,
+  slotOfTeam,
+  type EspnLeagueSnapshot,
+} from '@/lib/sources/espn-league';
 import type { League, LineupSlot, PlayerCard, Position } from '@/lib/types';
 
 /**
@@ -38,6 +43,9 @@ export default function SettingsPage() {
   const [packSummary, setPackSummary] = useState<string | null>(null);
   const [packNotes, setPackNotes] = useState<string[]>([]);
   const [loadingShipped, setLoadingShipped] = useState(false);
+  const [espnBusy, setEspnBusy] = useState(false);
+  const [espnStatus, setEspnStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [espnSnapshot, setEspnSnapshot] = useState<EspnLeagueSnapshot | null>(null);
 
   useEffect(() => {
     const pack = loadPack();
@@ -216,6 +224,62 @@ export default function SettingsPage() {
         matched > 0
           ? `Matched ${matched} of ${result.items.length} ranked players.`
           : 'No players matched — check that the names use the same format.',
+    });
+  };
+
+  /**
+   * One request answers everything at once: is the league reachable from THIS
+   * browser (the only place the answer matters), is it public, has the draft
+   * order been drawn, and what are the team names. The outcome is reported in
+   * the exact words of what happened — especially the two failure modes that
+   * are rules of the web rather than bugs (private league, CORS).
+   */
+  const handleEspnCheck = async () => {
+    const id = (league.espnLeagueId ?? '').trim();
+    if (!id) {
+      setEspnStatus({
+        kind: 'error',
+        text: 'Enter your league id first — the number after leagueId= in any ESPN league URL.',
+      });
+      return;
+    }
+    setEspnBusy(true);
+    setEspnSnapshot(null);
+    try {
+      const result = await fetchEspnLeague(id, league.season);
+      if (!result.ok) {
+        setEspnStatus({ kind: 'error', text: result.detail });
+        return;
+      }
+      setEspnSnapshot(result.snapshot);
+      const name = result.snapshot.leagueName ?? `league ${id}`;
+      setEspnStatus({
+        kind: 'ok',
+        text: result.snapshot.draftOrder
+          ? `Connected to ${name}. The draft order is published — tap your team below to set your slot.`
+          : `Connected to ${name}. ESPN has not published the draft order yet; check back after it is drawn.`,
+      });
+    } finally {
+      setEspnBusy(false);
+    }
+  };
+
+  /** Tap your own team in the fetched order → your slot is set and saved. */
+  const handlePickMyTeam = (teamId: number) => {
+    if (!espnSnapshot) return;
+    const slot = slotOfTeam(espnSnapshot, teamId);
+    if (slot === null) {
+      setEspnStatus({ kind: 'error', text: 'That team has no slot in the published order.' });
+      return;
+    }
+    const nextLeague = { ...league, draftSlot: slot };
+    setLeague(nextLeague);
+    const pack = loadPack();
+    if (pack) savePack({ ...pack, league: nextLeague });
+    const teamName = espnSnapshot.teams.find((t) => t.id === teamId)?.name ?? `team ${teamId}`;
+    setEspnStatus({
+      kind: 'ok',
+      text: `You are ${teamName}, drafting from slot ${slot}. Saved.`,
     });
   };
 
@@ -400,6 +464,73 @@ export default function SettingsPage() {
         <button type="button" className="btn-primary w-full" onClick={saveLeagueOnly}>
           Save league
         </button>
+      </section>
+
+      <section className="card space-y-3">
+        <h2 className="text-sm font-semibold">Your ESPN league</h2>
+        <p className="text-xs text-[var(--muted)]">
+          Link the league itself: import the draft order the moment it is drawn, and
+          follow picks live on draft night. Needs the league id — the number after{' '}
+          <span className="font-mono">leagueId=</span> in any ESPN league URL — and the
+          league set to publicly viewable (League Settings → Basic Settings), because a
+          browser cannot log in to ESPN on your behalf.
+        </p>
+
+        <Field label="ESPN league id">
+          <input
+            type="text"
+            inputMode="numeric"
+            className="input"
+            placeholder="e.g. 1234567"
+            value={league.espnLeagueId ?? ''}
+            onChange={(e) => updateLeague('espnLeagueId', e.target.value || undefined)}
+          />
+        </Field>
+
+        <button
+          type="button"
+          className="btn-ghost w-full"
+          disabled={espnBusy}
+          onClick={handleEspnCheck}
+        >
+          {espnBusy ? 'Checking…' : 'Test connection & get draft order'}
+        </button>
+
+        {espnStatus && (
+          <p
+            className={`rounded-lg px-3 py-2 text-sm ${
+              espnStatus.kind === 'ok'
+                ? 'bg-[var(--surface-2)]'
+                : 'bg-[var(--danger)]/10 text-[var(--danger)]'
+            }`}
+          >
+            {espnStatus.text}
+          </p>
+        )}
+
+        {espnSnapshot?.draftOrder && (
+          <div className="space-y-1">
+            <p className="text-xs text-[var(--muted)]">
+              The draft order, first pick at the top. Tap your team:
+            </p>
+            {espnSnapshot.draftOrder.map((teamId, index) => {
+              const team = espnSnapshot.teams.find((t) => t.id === teamId);
+              return (
+                <button
+                  key={teamId}
+                  type="button"
+                  onClick={() => handlePickMyTeam(teamId)}
+                  className="flex w-full items-baseline gap-3 rounded-lg bg-[var(--surface-2)] px-3 py-2 text-left"
+                >
+                  <span className="w-8 shrink-0 text-sm font-bold tabular-nums">
+                    {index + 1}
+                  </span>
+                  <span className="truncate">{team?.name ?? `Team ${teamId}`}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section className="card space-y-3">

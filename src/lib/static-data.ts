@@ -99,6 +99,11 @@ export interface PlayerPackEntry {
   adpSource?: string;
   /** ESPN's own PPR draft rank. */
   espnRank?: number;
+  /**
+   * ESPN's player id. This is what makes live draft sync exact: picks arrive
+   * from ESPN as ids, not names, and an id match cannot confuse two Franklins.
+   */
+  espnId?: number;
   /** Percent of ESPN leagues rostering the player. */
   percentOwned?: number;
   /**

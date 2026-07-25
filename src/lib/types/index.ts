@@ -186,6 +186,12 @@ export const LeagueSettingsSchema = z.object({
   positionLimits: z.partialRecord(PositionSchema, z.number().int().min(0)).optional(),
   /** ADP flavor to prefer when several are available. */
   adpFormat: z.string().default('ppr'),
+  /**
+   * The league's id on its platform (the `leagueId=` in an ESPN URL). Enables
+   * draft-order import and live pick sync. Optional: everything else works
+   * without it.
+   */
+  espnLeagueId: z.string().optional(),
 });
 export type League = z.infer<typeof LeagueSettingsSchema>;
 
@@ -253,6 +259,8 @@ export interface PlayerCard extends PlayerRef {
   injuryStatus?: string | null;
   /** Plain-English rendering of the designation, e.g. "on injured reserve". */
   injuryNote?: string;
+  /** ESPN's player id, for exact matching against live ESPN draft picks. */
+  espnId?: number;
   /** Composite from news + ADP movement; positive = trending up. */
   trendScore?: number;
 
