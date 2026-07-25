@@ -151,33 +151,17 @@ jobs:
           path: ./out
           retention-days: 30
 
-      # Tries to turn Pages on. This fails with "Resource not accessible by
-      # integration" when Pages is unavailable for the repository — most often
-      # because it is PRIVATE, and Pages on a private repo needs GitHub Pro or
-      # higher. That is a repository setting, not a build problem, so it must
-      # not fail the run and leave main permanently red.
-      - id: pages
-        name: Configure GitHub Pages
-        continue-on-error: true
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - uses: actions/upload-pages-artifact@v3
-        if: steps.pages.outcome == 'success'
-        with:
-          path: ./out
-
-
-      # Published unconditionally, not as a fallback.
+      # The site is published by pushing to the gh-pages branch, which is what
+      # this repository's Pages source is set to.
       #
-      # GitHub Pages can be sourced either from a branch or from an Actions
-      # artifact, and the workflow cannot read which one the repository is set
-      # to. Publishing only one of them means the site silently stops updating
-      # whenever the setting does not match: with the source set to a branch,
-      # `configure-pages` succeeds, the artifact path is taken, `deploy-pages`
-      # fails, and the branch is never refreshed — which is exactly what
-      # happened. Doing both is cheap and works under either setting.
+      # There used to be a second `deploy-pages` job here for the "GitHub
+      # Actions" Pages source. It cannot work while the source is a branch, and
+      # it failed during environment setup — before any step ran, so a
+      # step-level `continue-on-error` never applied. The result was a red X on
+      # every single run of a workflow that had in fact deployed successfully,
+      # which is worse than useless: it trains you to ignore the one signal that
+      # is supposed to tell you the deploy broke. One publishing route, honestly
+      # reported.
       - name: Publish to gh-pages branch
         run: |
           cd out
@@ -192,44 +176,3 @@ jobs:
             HEAD:gh-pages
           echo "Pushed $(find . -type f | wc -l) files to gh-pages."
 
-    outputs:
-      pages_enabled: ${{ steps.pages.outcome }}
-
-  deploy:
-    name: Deploy to GitHub Pages
-    # Pull requests are tested and built, but only main is published — and only
-    # when Pages is actually available for this repository.
-    if: |
-      github.ref == 'refs/heads/main'
-      && github.event_name != 'pull_request'
-      && needs.build.outputs.pages_enabled == 'success'
-    needs: build
-    runs-on: ubuntu-latest
-
-    permissions:
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      # Only succeeds when the repository's Pages source is "GitHub Actions".
-      # If it is set to a branch instead, this legitimately cannot deploy — the
-      # gh-pages push in the previous job has already published the same files,
-      # so a failure here must not fail the run.
-      - id: deployment
-        continue-on-error: true
-        uses: actions/deploy-pages@v4
-
-      - name: Note which route published the site
-        run: |
-          if [ "${{ steps.deployment.outcome }}" = "success" ]; then
-            echo "Published via the GitHub Actions Pages source."
-          else
-            echo "::notice title=Published from the gh-pages branch::The Actions \
-            Pages source is not enabled for this repository, so the site was \
-            published by pushing to the gh-pages branch instead. Both routes \
-            serve the same URL; no action needed."
-          fi
