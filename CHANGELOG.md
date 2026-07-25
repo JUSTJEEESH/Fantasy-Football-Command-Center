@@ -4,6 +4,26 @@ All notable changes to Fantasy Coach. Newest first.
 
 ## [Unreleased]
 
+### 2026-07-25 — Market movers, and a missing door
+
+**Added**
+- **ADP trend tracking** (`scripts/adp-history.ts`). The site rebuilds every
+  three hours anyway; each deploy now publishes a daily ADP snapshot and reads
+  the previous one back, making the deployment its own time-series database.
+  The plan page gains **Market movers** — who climbed or fell in real ESPN
+  drafts over the last week, which is the market digesting news before it
+  reaches anyone's rankings.
+- One sample per calendar day (intra-day builds overwrite, never stack), and
+  no trend is claimed until the series spans at least three days. The first
+  builds carry no deltas, honestly — the section appears when the data has
+  earned it.
+
+**Fixed**
+- **Settings was unreachable from a working app.** Its only link lived on the
+  "not ready" card, which disappears the moment a board exists. Found by the
+  user asking "I don't see settings?" — the review no test suite substitutes
+  for. Now in the Home quick links, with a regression test.
+
 ### 2026-07-25 — The briefing knows whose board it is on
 
 **Added**

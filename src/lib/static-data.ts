@@ -117,6 +117,12 @@ export interface PlayerPackEntry {
    * published or the team is unknown, because a zero would read as a real week.
    */
   byeWeek?: number;
+  /**
+   * ADP movement over the last ~week, in picks. NEGATIVE means drafted
+   * earlier — rising. Absent until the deployment has accumulated enough
+   * daily snapshots to say anything (at least a 3-day span).
+   */
+  adpDelta7d?: number;
 }
 
 export interface PlayerPack extends PackMeta {

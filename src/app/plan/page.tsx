@@ -112,6 +112,8 @@ export default function PlanPage() {
         </section>
       )}
 
+      <MarketMovers pack={pack} />
+
       {market && market.targets.length > 0 && (
         <EdgeList
           title="Targets"
@@ -205,6 +207,99 @@ function RulesEdge({ pack }: { pack: DraftPack }) {
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Who is moving in real drafts.
+ *
+ * Built from the deployment's own daily ADP snapshots — the builds run every
+ * three hours anyway, so the series is free. A player climbing twelve picks in
+ * a week is the market digesting news before it reaches a ranking, and it is
+ * exactly the thing worth knowing in the weeks before draft night.
+ *
+ * The section renders only when the history has enough span to claim a trend
+ * (3+ days) AND somebody actually moved. An empty section implying "we
+ * checked, nothing moved" would be a different claim than "no data yet".
+ */
+function MarketMovers({ pack }: { pack: DraftPack }) {
+  const draftRange = pack.league.teamCount * 13;
+  const withDelta = pack.players.filter(
+    (p) => p.adpDelta7d !== undefined && p.adp !== undefined && p.adp <= draftRange,
+  );
+  if (withDelta.length === 0) return null;
+
+  const risers = withDelta
+    .filter((p) => p.adpDelta7d! <= -6)
+    .sort((a, b) => a.adpDelta7d! - b.adpDelta7d!)
+    .slice(0, 5);
+  const fallers = withDelta
+    .filter((p) => p.adpDelta7d! >= 6)
+    .sort((a, b) => b.adpDelta7d! - a.adpDelta7d!)
+    .slice(0, 5);
+
+  if (risers.length === 0 && fallers.length === 0) return null;
+
+  return (
+    <section className="card space-y-3">
+      <div>
+        <h2 className="text-sm font-semibold">Market movers</h2>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          ADP movement over the last week of real ESPN drafts. The market often
+          digests news faster than rankings do.
+        </p>
+      </div>
+
+      {risers.length > 0 && (
+        <MoverList label="Rising" players={risers} tone="good" />
+      )}
+      {fallers.length > 0 && (
+        <MoverList label="Falling" players={fallers} tone="bad" />
+      )}
+    </section>
+  );
+}
+
+function MoverList({
+  label,
+  players,
+  tone,
+}: {
+  label: string;
+  players: PlayerCard[];
+  tone: 'good' | 'bad';
+}) {
+  return (
+    <div>
+      <h3
+        className={`text-[10px] font-semibold uppercase tracking-widest ${
+          tone === 'good' ? 'text-[var(--accent)]' : 'text-[var(--danger)]'
+        }`}
+      >
+        {label}
+      </h3>
+      <ul className="mt-1 space-y-1">
+        {players.map((p) => (
+          <li key={p.id} className="flex items-baseline gap-3 text-sm">
+            <span
+              className={`w-12 shrink-0 font-bold tabular-nums ${
+                tone === 'good' ? 'text-[var(--accent)]' : 'text-[var(--danger)]'
+              }`}
+            >
+              {p.adpDelta7d! > 0 ? '+' : ''}
+              {p.adpDelta7d!.toFixed(0)}
+            </span>
+            <span className="min-w-0 flex-1 truncate">
+              {p.name}
+              <span className="ml-1.5 text-xs text-[var(--muted)]">
+                {p.position}
+                {p.team ? ` · ${p.team}` : ''} · now ADP {p.adp!.toFixed(1)}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

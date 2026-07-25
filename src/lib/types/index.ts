@@ -261,6 +261,8 @@ export interface PlayerCard extends PlayerRef {
   injuryNote?: string;
   /** ESPN's player id, for exact matching against live ESPN draft picks. */
   espnId?: number;
+  /** ~Week ADP movement in picks; negative = rising. From build history. */
+  adpDelta7d?: number;
   /** Composite from news + ADP movement; positive = trending up. */
   trendScore?: number;
 

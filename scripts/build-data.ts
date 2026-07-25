@@ -19,12 +19,13 @@ import { join } from 'node:path';
 import { SleeperProvider } from '../src/lib/sources/sleeper';
 import { EspnProvider, type EspnPlayerRow } from '../src/lib/sources/espn';
 import { DEFAULT_RSS_SOURCES, RssNewsProvider, parseFeed } from '../src/lib/sources/rss';
-import { searchKey, type RawNewsItem } from '../src/lib/sources/types';
+import { guardedFetch, searchKey, type RawNewsItem } from '../src/lib/sources/types';
 import { clusterNews } from '../src/lib/news/dedup';
 import { buildPlayerNameIndex, classifyCluster, linkPlayers } from '../src/lib/news/classify';
 import type { NewsPack, PlayerPack, PlayerPackEntry } from '../src/lib/static-data';
 import type { Position } from '../src/lib/types';
 import { loadEnv } from './load-env';
+import { appendSnapshot, computeTrends, type AdpHistory } from './adp-history';
 
 const OUT_DIR = join(process.cwd(), 'public', 'data');
 
@@ -554,6 +555,61 @@ async function buildNews(players: PlayerPackEntry[]): Promise<NewsPack> {
   };
 }
 
+/**
+ * The deployment is its own ADP database.
+ *
+ * Every deploy publishes data/adp-history.json; every build reads it back from
+ * the live branch, appends today's snapshot, prunes the tail, and republishes.
+ * One sample per calendar day (intra-day builds overwrite, they do not stack),
+ * and no trend is claimed until samples span at least three days — the first
+ * builds simply carry no deltas, honestly.
+ */
+async function updateAdpHistory(pack: PlayerPack): Promise<AdpHistory | null> {
+  if (USE_FIXTURES) return null;
+
+  const repo = process.env.GITHUB_REPOSITORY ?? 'JUSTJEEESH/Fantasy-Football-Command-Center';
+  const url = `https://raw.githubusercontent.com/${repo}/gh-pages/data/adp-history.json`;
+
+  console.log('\nFetching ADP history from the previous deploy…');
+  let previous: AdpHistory = {};
+  const res = await guardedFetch(url, { sourceKey: 'adp_history', timeoutMs: 15_000 });
+  if (res.ok) {
+    try {
+      const parsed: unknown = JSON.parse(res.body);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        previous = parsed as AdpHistory;
+      }
+    } catch {
+      console.error('  ⚠ history file unreadable — starting the series over.');
+    }
+    console.log(`  ✓ ${Object.keys(previous).length} day(s) of history`);
+  } else {
+    // A 404 is the normal first run; anything else still must not fail the
+    // build — losing a trend line is a smaller failure than shipping nothing.
+    console.error(`  ⚠ no previous history (${res.error}). Starting the series.`);
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const history = appendSnapshot(previous, today, pack.players);
+  const trends = computeTrends(history, today);
+
+  let annotated = 0;
+  for (const player of pack.players) {
+    const trend = trends.get(player.id);
+    if (trend) {
+      player.adpDelta7d = trend.delta;
+      annotated++;
+    }
+  }
+  console.log(
+    `  ✓ ${Object.keys(history).length} day(s) kept; ` +
+      (annotated > 0
+        ? `${annotated} players carry a 7-day ADP delta`
+        : 'no trends yet — the series needs a 3-day span before claiming one'),
+  );
+  return history;
+}
+
 async function main() {
   loadEnv();
   console.log('FANTASY COACH — building static data pack');
@@ -573,9 +629,11 @@ async function main() {
   }
 
   const playerPack = await buildPlayers();
+  const history = await updateAdpHistory(playerPack);
   const newsPack = await buildNews(playerPack.players);
 
   writeFileSync(join(OUT_DIR, 'players.json'), JSON.stringify(playerPack));
+  if (history) writeFileSync(join(OUT_DIR, 'adp-history.json'), JSON.stringify(history));
   writeFileSync(join(OUT_DIR, 'news.json'), JSON.stringify(newsPack));
 
   console.log('\n' + '='.repeat(60));

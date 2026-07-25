@@ -291,6 +291,9 @@ function cardFor(entry: PlayerPackEntry, league: League, fetchedAt: string): Pla
   if (entry.espnId !== undefined) {
     card.espnId = entry.espnId;
   }
+  if (entry.adpDelta7d !== undefined) {
+    card.adpDelta7d = entry.adpDelta7d;
+  }
 
   // Projections: score the raw stat line under THIS league's rules. This is
   // the whole reason the pack ships stats instead of points.

@@ -259,3 +259,23 @@ describe('building player cards from a shipped pack', () => {
     expect(summary.players).toBe(0);
   });
 });
+
+describe('ADP trend passthrough', () => {
+  it('carries a 7-day delta onto the card', () => {
+    const { players } = playersFromPack(
+      packOf([{ id: 'RB-1', name: 'A', position: 'RB', team: 'ATL', adp: 30, adpDelta7d: -8 }]),
+      BAY_ISLANDS,
+    );
+    expect(players[0]!.adpDelta7d).toBe(-8);
+  });
+
+  it('leaves it absent rather than inventing a zero', () => {
+    // A zero would claim "we measured, nothing moved"; absence claims "no
+    // measurement yet". Those are different statements.
+    const { players } = playersFromPack(
+      packOf([{ id: 'RB-1', name: 'A', position: 'RB', team: 'ATL', adp: 30 }]),
+      BAY_ISLANDS,
+    );
+    expect(players[0]!.adpDelta7d).toBeUndefined();
+  });
+});
