@@ -92,18 +92,40 @@ pnpm dev                      # http://localhost:3000
 Then:
 
 1. **Settings** → set your league (teams, scoring, roster slots, draft slot).
-2. **Settings → Import ADP** → drop in a CSV. This is the important step.
+2. **Settings → Use the shipped player board** → one tap, no file needed.
 3. **Draft** → the war room is live.
 
-### Getting ADP data
+### Where the numbers come from
 
-There is no free, terms-clean ADP API, so CSV import is the primary path — and
-the system is designed to be fully effective with nothing else. Export a CSV
-from FantasyPros, Sleeper, ESPN, or any tool you already use. Column names are
-matched flexibly (`Player`/`Name`, `AVG`/`ADP`, `POS`/`Position`, …), and any
-row that can't be parsed is reported rather than silently dropped.
+The build fetches a real player board every three hours and bakes it into the
+deployment, so step 2 needs no network and no spreadsheet:
 
-The file is parsed in your browser and never uploaded anywhere.
+- **Sleeper** — the player master list, teams, injury designations, depth charts.
+- **ESPN** — average draft position, PPR draft ranks, season projections, and
+  bye weeks. ESPN because that is where this league is actually drafted; an
+  ADP from a platform nobody in the league uses would model the wrong draft.
+
+Projections ship as **stat lines, not points**, and are scored under your
+league's rules when the board is built — so six-point passing touchdowns and
+1/20 passing yards move the board rather than inheriting ESPN's defaults.
+
+ESPN's stat-id mapping is undocumented, so it is never trusted on faith. Every
+build reconstructs ESPN's own published point totals from the raw stats it
+sent; if that reconstruction fails on more than 10% of a real sample, the
+projections are dropped and the build says so. ADP still ships in that case —
+it needs no mapping to be trustworthy.
+
+RSS feeds cannot supply any of this. RSS carries headlines, links and
+timestamps; there is no feed anywhere that publishes ADP, rankings or
+projections, because those are not articles.
+
+### Bringing your own numbers
+
+If you trust your own export more, **Settings → Import ADP** takes a CSV and
+overrides the shipped board entirely. Column names are matched flexibly
+(`Player`/`Name`, `AVG`/`ADP`, `POS`/`Position`, …), and any row that can't be
+parsed is reported rather than silently dropped. The file is parsed in your
+browser and never uploaded anywhere.
 
 ### Check everything works
 
@@ -171,9 +193,10 @@ Supabase · Anthropic SDK · Vitest · Playwright.
 
 | Source | Access | Gives us | Limitation |
 | --- | --- | --- | --- |
-| Sleeper | Public API, no key | Players, leagues, rosters, **live draft picks** | No ADP or projections |
-| CSV import | Your own export | **ADP**, rankings, projections | Only as fresh as your file |
-| RSS (ESPN, CBS, Yahoo, PFT) | Public feeds | Headlines with timestamps | Headline-level only |
+| Sleeper | Public API, no key | Players, teams, injury designations, depth charts, rosters, **live draft picks** | No ADP or projections |
+| ESPN Fantasy (public) | Unauthenticated read-only JSON | **ADP**, PPR draft ranks, season projections, **bye weeks** | Undocumented — no published contract, can change without notice. ESPN drafts only, not a cross-platform consensus. Two requests per build. |
+| CSV import | Your own export | ADP, rankings, projections | Only as fresh as your file |
+| RSS (ESPN, CBS, Yahoo, PFT, RotoWire) | Public feeds | Headlines with timestamps | Headline-level only — **no ADP, rankings or projections, ever** |
 | Yahoo Fantasy | Official OAuth2 | League, roster, draft | Requires app registration |
 | ESPN Fantasy | Your own cookies | League, roster, draft | Unofficial; cookies expire |
 | NFL.com Fantasy | — | — | No public API; manual/CSV only |
@@ -188,8 +211,9 @@ unavailable rather than quietly scraped.
 
 ## Status
 
-**Working and tested:** league configuration · player database · ADP and rankings
-import · draft board · manual and voice pick entry · undo and correction ·
+**Working and tested:** league configuration · player database · real ADP, bye
+weeks and projections fetched at build time · one-tap board from shipped data ·
+ADP and rankings CSV import · draft board · manual and voice pick entry · undo and correction ·
 recommendation engine with six flavors · roster awareness · positional scarcity ·
 run detection · availability simulation · mobile UI · offline draft mode ·
 news deduplication, classification and impact scoring · Coach command router ·

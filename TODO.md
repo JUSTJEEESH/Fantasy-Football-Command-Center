@@ -5,7 +5,10 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 370 unit/integration tests + 29 browser tests passing.
+network switched off. 405 unit/integration tests + 32 browser tests passing.
+
+Real ADP, projections and bye weeks now ship in the build — the board no longer
+needs a CSV to exist.
 
 **Your league (Bay Islands Fantasy) is encoded exactly** — scoring, roster,
 position caps, 15 rounds. Load it in Settings with one tap. Draft slot is left
@@ -63,9 +66,13 @@ in the meantime.
       deployment, rebuilt every 3 hours by a scheduled workflow
 - [x] News feed UI: impact-ordered, attributed, with the reasoning shown
 - [x] Home briefing populated from the same data
+- [x] ESPN adapter: real ADP, PPR draft ranks, season projections and bye weeks,
+      with the undocumented stat-id mapping re-verified against ESPN's own point
+      totals on every build
+- [x] Feeds fall back through alternate URLs; an empty parse counts as a failure
+      instead of a silent success (this is what hid the dead ESPN feed)
 - [ ] Trend detection over the ADP/ranking time series
-- [ ] ESPN RSS feed returns zero items — URL appears to have moved, needs a
-      replacement (the source panel flags it rather than hiding it)
+- [ ] Confirm which ESPN feed URL the fallback settled on and promote it
 
 ## Phase 8 — Coach layer ✅
 - [x] Intent router: 24 intents, NL variants, conversational context
@@ -90,14 +97,15 @@ in the meantime.
 - [x] Draft War Room, fully offline
 - [x] Home readiness screen, Players board, My Team, News, Settings wizard
 - [x] CSV import in-browser (file never uploaded)
+- [x] One-tap draft pack from the shipped board — no spreadsheet required
 - [x] Voice input (Web Speech API, degrades to text)
 - [x] Draft board persistence across reload / phone lock
 - [ ] Desktop three-column war room layout (mobile layout works everywhere today)
 - [ ] Service worker for full offline asset caching
 
 ## Phase 10–11 — Testing & deploy
-- [x] 370 unit + integration tests (integration tests exercise the real SQL)
-- [x] 29 Playwright browser tests, incl. offline draft and the live news feed
+- [x] 405 unit + integration tests (integration tests exercise the real SQL)
+- [x] 32 Playwright browser tests, incl. offline draft and the live news feed
 - [ ] Deployment docs (Vercel + Supabase)
 - [ ] Airplane-mode rehearsal on a real phone
 
@@ -115,8 +123,8 @@ all of them; none is needed for August 30.
 
 | What | Why it matters | Action |
 | --- | --- | --- |
-| **ADP data** | Draft Mode's advice quality depends on it entirely | Export a CSV from FantasyPros/Sleeper/ESPN → Settings → Import |
+| ~~**ADP data**~~ | ~~Draft Mode's advice quality depends on it entirely~~ | **Done** — ESPN ADP is fetched every build. Settings → *Use the shipped player board*. CSV import still overrides it. |
 | **Live egress** | Sandbox blocks all data hosts, so adapters are fixture-tested only | Run `pnpm doctor` locally |
 | **Draft slot** | The board cannot be built without it | Set it after your Aug 8 party — Draft → Seats |
-| **Projections** | Without them, points are estimated from ADP (labelled as such) | Import a projections CSV, or accept the estimate |
+| ~~**Projections**~~ | ~~Without them, points are estimated from ADP~~ | **Done** — ESPN season projections, re-scored under Bay Islands rules. Yardage bonuses are excluded and labelled. |
 | `ANTHROPIC_API_KEY` | Only affects wording, never advice | Optional |

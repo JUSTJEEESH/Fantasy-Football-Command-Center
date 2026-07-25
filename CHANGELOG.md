@@ -4,6 +4,46 @@ All notable changes to Fantasy Coach. Newest first.
 
 ## [Unreleased]
 
+### 2026-07-25 — Real ADP, projections and bye weeks
+
+**Added**
+- **ESPN adapter** (`src/lib/sources/espn.ts`) — average draft position, PPR
+  draft ranks, season projections and bye weeks from ESPN's public
+  league-default endpoint. ESPN specifically because that is where this league
+  drafts; an ADP from a platform nobody in the league uses would describe the
+  wrong draft.
+- Projections ship as **stat lines rather than points**, and are scored under
+  the league's own rules when the board is built. Bay Islands' 6-point passing
+  touchdowns and 1/20 passing yards now actually move the board instead of
+  inheriting ESPN's defaults.
+- **A build-time proof of the stat mapping.** ESPN's stat ids are undocumented.
+  Rather than trust a community mapping, every build reconstructs ESPN's own
+  published `appliedTotal` from the raw stats it sent; the mapping has to
+  reproduce it on 90% of a real sample or the projections are dropped and the
+  reason is reported. ADP is unaffected — it needs no mapping.
+- **One-tap board from the shipped data** (Settings → *Use the shipped player
+  board*). Injury risk is derived from reported designations, role certainty
+  from depth charts; both are labelled as inferences, and the yardage-bonus
+  omission is stated rather than papered over.
+- RotoWire added as a fantasy-specific news wire.
+
+**Fixed**
+- A draft pack could **only** be built by importing a CSV, so the 600 real
+  players already in the deployment never reached the engine. Anyone who
+  arrived without a spreadsheet got an empty war room.
+- Every `byeWeek` was 0, so bye-stacking warnings never fired.
+- `injuryRisk` and `roleCertainty` always fell back to their defaults, which
+  made the "injury concern" warnings decorative.
+- Feeds now fall back through alternate URLs, and a feed that parses to **zero
+  items counts as a failure** rather than a success. A dead feed answers 200
+  with a valid empty document — that is why ESPN silently vanished from the
+  news feed and the run stayed green.
+- Removed the `deploy-pages` job. It could not work while the Pages source is a
+  branch, and it failed during environment setup before any step ran, so its
+  step-level `continue-on-error` never applied. Every run of a workflow that
+  was deploying correctly ended red — which is exactly how a real deploy
+  failure would have gone unnoticed.
+
 ### 2026-07-24 — Deployed to GitHub Pages
 
 **Added**

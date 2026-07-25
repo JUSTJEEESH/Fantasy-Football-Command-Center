@@ -245,7 +245,8 @@ Researched for §47.5–47.8. **Nothing here is scraped in violation of terms.**
 | Source | Access | Cost | Gives us | Limitation |
 | --- | --- | --- | --- | --- |
 | **Sleeper API** | Public REST, no key, no auth | Free | Player master list, leagues, rosters, **live draft picks**, transactions | Undocumented but stable and publicly promoted; asks for ≤1000 calls/min. No ADP endpoint, no projections. |
-| **ESPN Fantasy** | Public endpoints; private leagues need your own `espn_s2`/`SWID` cookies | Free | League/roster/draft data | Unofficial API. Cookies expire. Your own credentials for your own league only. |
+| **ESPN Fantasy (league defaults)** | Public, unauthenticated, read-only JSON | Free | **ADP**, PPR draft ranks, **season projections as raw stat lines**, **bye weeks** | Undocumented — ESPN publishes no contract and may change or withdraw it. ADP is ESPN-only, not a cross-platform consensus. Stat-id meanings are unpublished, so every build re-derives ESPN's own point totals to prove the mapping before publishing projections. Two requests per build. |
+| **ESPN Fantasy (private league)** | Your own `espn_s2`/`SWID` cookies | Free | League/roster/draft data | Unofficial API. Cookies expire. Your own credentials for your own league only. |
 | **Yahoo Fantasy** | Official OAuth2 API | Free (registration required) | League, roster, draft, transactions | Genuine OAuth flow + token refresh. The most legally solid league integration. |
 | **NFL Fantasy** | No public API | — | — | Manual/CSV path only. Documented as a limitation, not faked. |
 | **RSS feeds** (ESPN, CBS, NFL.com, Rotoworld, team sites) | Public RSS | Free | Headlines + summaries with timestamps | Headline-level detail only; full articles are not redistributed. RSS is published *for* syndication — this is the intended use. |
@@ -259,10 +260,22 @@ or bot protection; no republishing article bodies; per-source rate limits respec
 registry; user's own credentials used only for the user's own leagues. Any source that
 requires violating its terms is not implemented — it is documented as unavailable.
 
-**Deliberate consequence:** ADP and consensus rankings have no free, terms-clean, programmatic
-source. Rather than fabricate them, the system ships a **CSV import path** as the primary ADP
-route, with the FantasyPros adapter ready if the user buys a key. This is the honest answer to
-§47.7, and it is why Draft Mode is designed to be excellent with only CSV data.
+**Deliberate consequence:** *consensus* ADP — an average across platforms — still has no free,
+terms-clean, programmatic source. What is available free is **ESPN's own ADP**, which for this
+project is arguably the better number anyway: the league drafts on ESPN, so ESPN's ADP describes
+the draft that will actually happen rather than an aggregate of drafts that won't. It is labelled
+as ESPN's throughout, never as consensus. CSV import remains as the override for anyone who
+trusts their own export more, and the FantasyPros adapter is ready if a key is ever bought.
+
+**On trusting an undocumented endpoint.** ESPN's projections arrive as a map of numeric stat ids
+to values, with no published key. Adopting a community mapping on faith would risk shipping
+confident, specific, wrong projections — the single worst failure available to this system.
+Instead the mapping is treated as a hypothesis and tested on every build against evidence ESPN
+itself supplies: each projection row carries `appliedTotal`, the points ESPN computed from those
+same stats under its own PPR rules. Applying the ESPN rulebook through the mapping must reproduce
+that total on at least 90% of a real sample. If it does not, projections are dropped and the
+failure is reported in the build log and in the app's source panel. ADP and draft ranks are
+unaffected, since they require no mapping. See `src/lib/sources/espn.ts`.
 
 ---
 
