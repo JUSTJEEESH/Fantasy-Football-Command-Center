@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   eventTypeLabel,
+  groupByPlayer,
   impactSentence,
   loadNewsPack,
   packFreshness,
   relativeTime,
+  type EventGroup,
   type NewsEventView,
   type NewsPack,
 } from '@/lib/static-data';
@@ -61,8 +63,14 @@ export default function NewsPage() {
 
   const freshness = packFreshness(pack);
 
-  const headline = events.filter((e) => ['CRITICAL', 'HIGH'].includes(e.fantasyImpact));
-  const rest = events.filter((e) => !['CRITICAL', 'HIGH'].includes(e.fantasyImpact));
+  // Group after splitting by urgency, so a player's big story stays in
+  // "needs your attention" and its colour pieces do not drag it down.
+  const headline = groupByPlayer(
+    events.filter((e) => ['CRITICAL', 'HIGH'].includes(e.fantasyImpact)),
+  );
+  const rest = groupByPlayer(
+    events.filter((e) => !['CRITICAL', 'HIGH'].includes(e.fantasyImpact)),
+  );
 
   return (
     <div className="space-y-4">
@@ -127,12 +135,12 @@ export default function NewsPage() {
           {headline.length > 0 && (
             <section className="space-y-2">
               <SectionLabel>Needs your attention</SectionLabel>
-              {headline.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  expanded={expanded === event.id}
-                  onToggle={() => setExpanded(expanded === event.id ? null : event.id)}
+              {headline.map((group) => (
+                <PlayerGroup
+                  key={group.lead.id}
+                  group={group}
+                  expanded={expanded}
+                  onToggle={(id) => setExpanded(expanded === id ? null : id)}
                 />
               ))}
             </section>
@@ -141,12 +149,12 @@ export default function NewsPage() {
           {rest.length > 0 && (
             <section className="space-y-2">
               <SectionLabel>Worth knowing</SectionLabel>
-              {rest.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  expanded={expanded === event.id}
-                  onToggle={() => setExpanded(expanded === event.id ? null : event.id)}
+              {rest.map((group) => (
+                <PlayerGroup
+                  key={group.lead.id}
+                  group={group}
+                  expanded={expanded}
+                  onToggle={(id) => setExpanded(expanded === id ? null : id)}
                 />
               ))}
             </section>
@@ -166,6 +174,60 @@ export default function NewsPage() {
 }
 
 // ---------------------------------------------------------------------------
+
+/**
+ * A player's lead story, with the rest of their coverage one tap away.
+ *
+ * Nothing is hidden: the count is stated, every follow-up is reachable, and
+ * each keeps its own sources. This is about not spending six cards saying one
+ * thing while the next player waits below the fold.
+ */
+function PlayerGroup({
+  group,
+  expanded,
+  onToggle,
+}: {
+  group: EventGroup;
+  expanded: string | null;
+  onToggle: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="space-y-2">
+      <EventCard
+        event={group.lead}
+        expanded={expanded === group.lead.id}
+        onToggle={() => onToggle(group.lead.id)}
+      />
+
+      {group.more.length > 0 && (
+        <div className="pl-3">
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            className="text-xs font-medium text-[var(--muted)] underline underline-offset-2"
+          >
+            {open ? 'Hide' : `${group.more.length} more on ${group.player}`}
+          </button>
+
+          {open && (
+            <div className="mt-2 space-y-2 border-l border-[var(--surface-2)] pl-3">
+              {group.more.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  expanded={expanded === event.id}
+                  onToggle={() => onToggle(event.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function EventCard({
   event,

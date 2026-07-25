@@ -67,3 +67,22 @@ test.describe('news feed', () => {
     expect(new Set(meaningful).size).toBe(meaningful.length);
   });
 });
+
+test('collapses repeated coverage of one player instead of stacking cards', async ({ page }) => {
+  await page.goto(`${SITE}/news/`);
+
+  // Data-dependent by nature: a quiet news day has nothing to group. Assert the
+  // mechanism when there is something to assert, and that nothing is lost.
+  const more = page.getByRole('button', { name: /\d+ more on /i });
+  const groups = await more.count();
+  if (groups === 0) test.skip(true, 'no repeated coverage in this build');
+
+  const first = more.first();
+  const label = (await first.textContent()) ?? '';
+  const hidden = Number(label.match(/(\d+) more/)?.[1] ?? 0);
+  expect(hidden).toBeGreaterThan(0);
+
+  // Everything collapsed is one tap away, and the control says so both ways.
+  await first.click();
+  await expect(page.getByRole('button', { name: /^Hide$/ }).first()).toBeVisible();
+});

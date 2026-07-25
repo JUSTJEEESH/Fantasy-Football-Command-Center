@@ -25,6 +25,13 @@ All notable changes to Fantasy Coach. Newest first.
   board*). Injury risk is derived from reported designations, role certainty
   from depth charts; both are labelled as inferences, and the yardage-bonus
   omission is stated rather than papered over.
+- **Repeated coverage of one player is grouped.** Mahomes being cleared for
+  camp produced seven separate events in one build — the announcement, a quote
+  piece, a rehab retrospective, an opinion column. Deduplication is right to
+  keep them apart; they are genuinely different articles. But seven cards about
+  one fact buries the next player below the fold. The strongest item now leads
+  and the rest sit behind "6 more on Patrick Mahomes". Nothing is merged or
+  discarded, and the count is stated.
 - RotoWire added as a fantasy-specific news wire.
 - Dead feeds are removed rather than left permanently red, with the evidence
   recorded in the source list: ESPN's NFL RSS returns 200-with-zero-items on
@@ -53,6 +60,12 @@ All notable changes to Fantasy Coach. Newest first.
   actually unknown (completeness, freshness), with separation as a modest bonus.
   Same rehearsal now reads median 0.86, falling to 0.38 for late-round players
   with no ADP or projection.
+- **A surname could link to the wrong person.** "What signing Jeremiah
+  Franklin, waiving Jimmy Kibble means for the Patriots" linked Troy Franklin —
+  a different Franklin — and Bub Means, matched on the ordinary English word
+  "means". A surname is no longer matched when the word before it is somebody
+  else's first name, which is decidable exactly: had it been this player's own
+  first name, the full-name pass would already have consumed it.
 - An integration test looked its news source up by the literal key `espn_nfl`.
   Renaming the retired feed broke it — in CI only, because a dev database still
   had the old row seeded from an earlier run. The clean-database failure was

@@ -223,6 +223,64 @@ export function relativeTime(iso: string | undefined, now = new Date()): string 
 }
 
 /** Freshness of the whole pack, phrased so it never implies live data. */
+/**
+ * A lead story plus the rest of the coverage of the same player.
+ */
+export interface EventGroup {
+  /** Highest-impact event for this player, shown in full. */
+  lead: NewsEventView;
+  /** Everything else about the same player, shown compactly. */
+  more: NewsEventView[];
+  /** The player the group is about, or null for ungrouped items. */
+  player: string | null;
+}
+
+/**
+ * Collapse repeated coverage of one player into a single group.
+ *
+ * When something big happens, every outlet writes it up from a different
+ * angle — Patrick Mahomes being cleared for camp produced seven distinct
+ * events in one build: the announcement, a quote piece, a rehab retrospective,
+ * an opinion column. Deduplication is right to keep them apart, because they
+ * genuinely are different articles. But seven cards about one player is the
+ * feed being noisy about a single fact.
+ *
+ * So this does not merge or discard anything. The strongest item leads, the
+ * rest stay one tap away, and the count is stated. A feed that reads "Mahomes
+ * — 6 more updates" says the same thing as six cards in a tenth of the space,
+ * and does not bury the next player underneath it.
+ *
+ * Order is preserved: groups appear where their lead event appeared.
+ */
+export function groupByPlayer(events: NewsEventView[]): EventGroup[] {
+  const groups: EventGroup[] = [];
+  const byPlayer = new Map<string, EventGroup>();
+
+  for (const event of events) {
+    // The first linked player is the one the linker was most confident about.
+    const player = event.players[0]?.name ?? null;
+
+    // Unlinked items are about no one in particular; grouping them by
+    // "nobody" would lump unrelated stories together.
+    if (!player) {
+      groups.push({ lead: event, more: [], player: null });
+      continue;
+    }
+
+    const existing = byPlayer.get(player);
+    if (existing) {
+      existing.more.push(event);
+      continue;
+    }
+
+    const group: EventGroup = { lead: event, more: [], player };
+    byPlayer.set(player, group);
+    groups.push(group);
+  }
+
+  return groups;
+}
+
 export function packFreshness(
   meta: PackMeta | null,
   now = new Date(),

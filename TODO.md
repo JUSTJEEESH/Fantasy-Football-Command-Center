@@ -5,7 +5,7 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 423 unit/integration tests + 32 browser tests passing.
+network switched off. 436 unit/integration tests + 33 browser tests passing.
 
 Real ADP, real projections and real bye weeks now ship in the build — the board
 no longer needs a CSV to exist. Verified against the live deployment: 600
@@ -76,6 +76,8 @@ in the meantime.
       totals on every build
 - [x] Feeds fall back through alternate URLs; an empty parse counts as a failure
       instead of a silent success (this is what hid the dead ESPN feed)
+- [x] Repeated coverage of one player groups behind a lead story
+- [x] Surname linking refuses a match preceded by another person's first name
 - [ ] Trend detection over the ADP/ranking time series
 - [x] ESPN's NFL RSS confirmed retired (all three endpoints: HTTP 200, zero
       items). Replaced with NFL.com; RotoWire added as a fantasy-specific wire.
