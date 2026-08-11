@@ -17,7 +17,7 @@ test('static build: full draft flow works', async ({ page, context }) => {
 
   await page.goto(`${SITE}/settings/`);
   await page.getByRole('button', { name: 'Load Bay Islands Fantasy' }).click();
-  await expect(page.getByText(/ZERO tight ends/)).toBeVisible();
+  await expect(page.getByText(/post-party rules/)).toBeVisible();
   await page.getByLabel('Your draft slot', { exact: true }).fill('7');
   await page.setInputFiles('input[type="file"] >> nth=0', { name:'adp.csv', mimeType:'text/csv', buffer: Buffer.from(ADP_CSV) });
   await expect(page.getByText(/Imported 14 players/)).toBeVisible();
@@ -38,7 +38,9 @@ test('static build: full draft flow works', async ({ page, context }) => {
   // Slot planner
   await page.goto(`${SITE}/draft/slots/`);
   await expect(page.getByRole('heading', { name: 'Slot planner' })).toBeVisible();
-  await expect(page.getByText(/starts ZERO tight ends/)).toBeVisible();
+  // The zero-TE warning must be GONE: the league voted a mandatory TE in on
+  // 2026-08-08, and stale strategy text would now be coaching the wrong draft.
+  await expect(page.getByText(/starts ZERO tight ends/)).toHaveCount(0);
 
   // The feed is populated from data baked in at build time.
   await page.goto(`${SITE}/news/`);

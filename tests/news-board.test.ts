@@ -113,8 +113,8 @@ describe('board context on a news item', () => {
   });
 
   it('has no opinion on reach when the draft slot is not drawn yet', () => {
-    // The slot is unknown until the Aug 8 party, and "in reach" is meaningless
-    // without a pick number to reach from.
+    // "In reach" is meaningless without a pick number to reach from — the
+    // state any league is in before its order is drawn.
     const noSlot = { ...state([]), userSlot: 0 };
     const index = buildBoardIndex(pack, noSlot);
     expect(index.lookup('Jahmyr Gibbs')!.reachable).toBeUndefined();
@@ -197,15 +197,17 @@ describe('before draft day, when there is no draft state', () => {
   });
 
   it('says nothing about reach until the slot is drawn', () => {
-    // The Bay Islands slot is unknown until the August 8 party. Guessing one
-    // would put a confident label on a pick position nobody has.
-    const index = buildBoardIndex(buildDraftPack({ league: BAY_ISLANDS, players }), null);
-    expect(BAY_ISLANDS.draftSlot).toBeNull();
+    // Guessing a slot would put a confident label on a pick position nobody
+    // has. (Bay Islands' own slot is now drawn — 10 — so the undrawn state is
+    // constructed explicitly here.)
+    const undrawn = { ...BAY_ISLANDS, draftSlot: null };
+    const index = buildBoardIndex(buildDraftPack({ league: undrawn, players }), null);
     expect(index.lookup('Jahmyr Gibbs')!.reachable).toBeUndefined();
   });
 
   it('still reports ADP and tier without a slot', () => {
-    const index = buildBoardIndex(buildDraftPack({ league: BAY_ISLANDS, players }), null);
+    const undrawn = { ...BAY_ISLANDS, draftSlot: null };
+    const index = buildBoardIndex(buildDraftPack({ league: undrawn, players }), null);
     expect(index.lookup('Jahmyr Gibbs')!.adp).toBe(1.7);
   });
 });
@@ -234,7 +236,8 @@ describe('draft-range relevance for the briefing', () => {
 
   it('falls back to the startable range before the slot is drawn', () => {
     // No slot → no reach window → the first eight rounds stand in for it.
-    const index = buildBoardIndex(buildDraftPack({ league: BAY_ISLANDS, players }), null);
+    const undrawn = { ...BAY_ISLANDS, draftSlot: null };
+    const index = buildBoardIndex(buildDraftPack({ league: undrawn, players }), null);
     expect(draftRelevant(event(['Patrick Mahomes']), index, { teamCount: 12 })).toBe(true);
     expect(draftRelevant(event(['Deep Sleeper']), index, { teamCount: 12 })).toBe(false);
   });

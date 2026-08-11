@@ -348,8 +348,8 @@ export default function SettingsPage() {
             setStatus({
               kind: 'ok',
               text:
-                'Bay Islands Fantasy loaded. Note: this league starts ZERO tight ends — ' +
-                'a TE only plays through your single FLEX spot.',
+                'Bay Islands Fantasy loaded with the post-party rules: mandatory TE, ' +
+                '9 starters, 6 bench, and your seat — pick 10 — already set.',
             });
           }}
         >

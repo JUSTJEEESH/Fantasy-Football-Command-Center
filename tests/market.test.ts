@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MIN_OWNERSHIP_FOR_REAL_ADP, analyzeMarket } from '@/lib/engine/market';
 import { BAY_ISLANDS } from '@/lib/leagues/bay-islands';
-import { SCORING_PRESETS } from '@/lib/engine/scoring';
 import type { League, PlayerCard, Position } from '@/lib/types';
 
 // ============================================================================
@@ -114,36 +113,39 @@ describe('what the market analysis refuses to conclude', () => {
 describe('the edge Bay Islands actually has', () => {
   const result = analyzeMarket(STANDARD_BOARD, BAY_ISLANDS);
 
-  it('marks tight ends down, because this league requires none', () => {
-    // The defining rule of the league. TEs are priced by a market where
-    // everyone must start one; Bay Islands requires zero.
+  // The league's defining rule CHANGED at the 2026-08-08 party: a mandatory
+  // TE was voted in. The old assertions here — TEs faded wholesale, "not
+  // required to start a TE" verdict — described the old league, and keeping
+  // them would freeze the app in a season that no longer exists. The
+  // flex-only fade MECHANISM is still tested below, against a league shaped
+  // like the old one, so the behaviour is preserved even though Bay Islands
+  // no longer triggers it.
+  const OLD_BAY_ISLANDS: League = {
+    ...BAY_ISLANDS,
+    rosterSlots: { QB: 1, RB: 2, WR: 2, FLEX: 1, K: 1, DST: 1 },
+    benchSize: 7,
+  };
+
+  it('no longer blanket-fades tight ends now that one is mandatory', () => {
     const te = result.byPosition.find((p) => p.position === 'TE');
     expect(te).toBeDefined();
-    expect(te!.medianRoundsOfEdge).toBeLessThan(-1);
-    // Precisely: not "zero TEs" — Bay Islands has a FLEX and a TE is
-    // flex-eligible. What is true is that none is REQUIRED.
-    expect(te!.verdict).toMatch(/not required to start a TE/i);
-  });
-
-  it('puts tight ends at the top of the fade list', () => {
-    expect(result.fades.length).toBeGreaterThan(0);
-    expect(result.fades[0]!.player.position).toBe('TE');
-  });
-
-  it('does not fade tight ends in a league that starts one', () => {
-    // Same players, same projections — the verdict has to come from the rules,
-    // not from a hardcoded opinion about tight ends.
-    const normal: League = {
-      ...BAY_ISLANDS,
-      rosterSlots: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1, DST: 1 },
-      scoring: SCORING_PRESETS.ppr(),
-    };
-    const te = analyzeMarket(STANDARD_BOARD, normal).byPosition.find(
+    expect(te!.verdict).not.toMatch(/not required to start a TE/i);
+    // Required-position pricing: whatever the verdict, it is the ordinary
+    // over/under/fair wording, not the structural fade.
+    const old = analyzeMarket(STANDARD_BOARD, OLD_BAY_ISLANDS).byPosition.find(
       (p) => p.position === 'TE',
     );
-    expect(te!.medianRoundsOfEdge).toBeGreaterThan(
-      result.byPosition.find((p) => p.position === 'TE')!.medianRoundsOfEdge,
-    );
+    expect(te!.medianRoundsOfEdge).toBeGreaterThan(old!.medianRoundsOfEdge);
+  });
+
+  it('still fades a flex-only position, in a league shaped like the old one', () => {
+    // The mechanism the old rules exercised must survive the rule change.
+    const old = analyzeMarket(STANDARD_BOARD, OLD_BAY_ISLANDS);
+    const te = old.byPosition.find((p) => p.position === 'TE');
+    expect(te!.medianRoundsOfEdge).toBeLessThan(-1);
+    expect(te!.verdict).toMatch(/not required to start a TE/i);
+    expect(old.fades.length).toBeGreaterThan(0);
+    expect(old.fades[0]!.player.position).toBe('TE');
   });
 
   it('expresses the gap in rounds, which is how a draft is actually felt', () => {

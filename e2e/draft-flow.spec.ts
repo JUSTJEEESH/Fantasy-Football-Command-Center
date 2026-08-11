@@ -62,31 +62,31 @@ test.describe('Bay Islands league', () => {
   async function loadLeague(page: Page) {
     await page.goto('/settings');
     await page.getByRole('button', { name: 'Load Bay Islands Fantasy' }).click();
-    await expect(page.getByText(/ZERO tight ends/)).toBeVisible();
+    await expect(page.getByText(/post-party rules/)).toBeVisible();
   }
 
-  test('loads the real league and warns about the zero-TE rule', async ({ page }) => {
+  test('loads the real league with the post-party roster', async ({ page }) => {
     await loadLeague(page);
-    // Roster fields reflect the actual settings.
+    // Roster fields reflect the AMENDED settings: mandatory TE, 6 bench.
     await expect(page.getByLabel('Teams', { exact: true })).toHaveValue('12');
-    await expect(page.getByLabel('Bench', { exact: true })).toHaveValue('7');
-    // Zero required tight ends — the defining rule of this league.
-    await expect(page.getByLabel('TE', { exact: true })).toHaveValue('0');
+    await expect(page.getByLabel('Bench', { exact: true })).toHaveValue('6');
+    await expect(page.getByLabel('TE', { exact: true })).toHaveValue('1');
     await expect(page.getByLabel('RB', { exact: true })).toHaveValue('2');
     await expect(page.getByLabel('FLEX', { exact: true })).toHaveValue('1');
   });
 
-  test('leaves the draft slot blank until the order is drawn', async ({ page }) => {
+  test('arrives with the drawn slot already set', async ({ page }) => {
+    // Drawn at the party on Aug 8: seat 10. "Open the computer and go" means
+    // the right slot is there without typing it.
     await loadLeague(page);
-    await expect(page.getByLabel('Your draft slot', { exact: true })).toHaveValue('');
-    await expect(page.getByLabel('Your draft slot', { exact: true })).toHaveAttribute(
-      'placeholder',
-      'Not drawn yet',
-    );
+    await expect(page.getByLabel('Your draft slot', { exact: true })).toHaveValue('10');
   });
 
   test('refuses to open the war room without a draft slot, and says why', async ({ page }) => {
+    // Other leagues still live in the undrawn state, so the guard must hold:
+    // clear the slot and the war room has to explain rather than assume.
     await loadLeague(page);
+    await page.getByLabel('Your draft slot', { exact: true }).fill('');
     await page.getByRole('button', { name: 'Save league' }).click();
     await page.goto('/draft');
     await expect(page.getByText(/draft slot has not been set/i)).toBeVisible();
@@ -100,8 +100,9 @@ test.describe('Bay Islands league', () => {
 
     await page.goto('/draft/slots');
     await expect(page.getByRole('heading', { name: 'Slot planner' })).toBeVisible();
-    // The zero-TE consequence is surfaced without needing a seat.
-    await expect(page.getByText(/starts ZERO tight ends/)).toBeVisible();
+    // The zero-TE warning died with the 2026-08-08 amendment; the planner must
+    // not be coaching last season's rules.
+    await expect(page.getByText(/starts ZERO tight ends/)).toHaveCount(0);
 
     await page.getByRole('button', { name: '7', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Seat 7' })).toBeVisible();

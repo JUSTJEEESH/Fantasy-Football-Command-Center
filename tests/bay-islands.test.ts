@@ -27,22 +27,25 @@ describe('league configuration', () => {
     expect(LeagueSettingsSchema.safeParse(BAY_ISLANDS).success).toBe(true);
   });
 
-  it('accepts an undrawn draft order', () => {
-    expect(BAY_ISLANDS.draftSlot).toBeNull();
-    expect(LeagueSettingsSchema.safeParse(BAY_ISLANDS).success).toBe(true);
+  it('carries the draft slot drawn at the party', () => {
+    expect(BAY_ISLANDS.draftSlot).toBe(10);
+    // An undrawn order must still validate — other leagues live in that state.
+    expect(
+      LeagueSettingsSchema.safeParse({ ...BAY_ISLANDS, draftSlot: null }).success,
+    ).toBe(true);
   });
 
-  it('has 8 starters and 15 total roster spots', () => {
+  it('has 9 starters and 15 total roster spots since the TE vote', () => {
     const starters = Object.entries(BAY_ISLANDS.rosterSlots)
       .filter(([slot]) => slot !== 'BENCH')
       .reduce((sum, [, n]) => sum + (n ?? 0), 0);
-    expect(starters).toBe(8);
+    expect(starters).toBe(9);
     expect(starters + BAY_ISLANDS.benchSize).toBe(15);
     expect(BAY_ISLANDS_ROUNDS).toBe(15);
   });
 
-  it('requires zero starting tight ends', () => {
-    expect(BAY_ISLANDS.rosterSlots.TE ?? 0).toBe(0);
+  it('requires exactly one starting tight end — the 2026-08-08 amendment', () => {
+    expect(BAY_ISLANDS.rosterSlots.TE).toBe(1);
   });
 });
 
@@ -105,45 +108,56 @@ describe('scoring matches the settings page', () => {
   });
 });
 
-describe('the zero-TE rule and what it does to value', () => {
-  it('collapses tight end demand to a share of the flex spot', () => {
+describe('the mandatory-TE amendment and what it does to value', () => {
+  // Until 2026-08-08 this league required zero tight ends, and the tests here
+  // asserted that world: replacement near TE2, nearly the whole position below
+  // replacement, no TE needed for a legal lineup. The league voted a mandatory
+  // TE in, so every one of those claims flipped — and each flip is asserted
+  // deliberately rather than absorbed.
+
+  it('restores full starter demand at tight end', () => {
     const teDemand = positionalDemandPerTeam(BAY_ISLANDS.rosterSlots, 'TE');
-    const rbDemand = positionalDemandPerTeam(BAY_ISLANDS.rosterSlots, 'RB');
-    expect(teDemand).toBeLessThan(0.2);
-    expect(rbDemand).toBeGreaterThan(2);
+    expect(teDemand).toBeGreaterThanOrEqual(1);
   });
 
-  it('sets replacement level at tight end near the very top of the position', () => {
+  it('pushes replacement level deep into the position', () => {
     const replacement = computeReplacementLevels(players, league);
-    // With ~12 teams starting one TE, replacement is around TE14. Here it must
-    // be far shallower, because almost nobody has to start one.
-    expect(replacement.index.TE).toBeLessThan(4);
-    expect(replacement.index.RB).toBeGreaterThan(25);
+    // Twelve teams each must start one: replacement lives around TE12, not TE2.
+    expect(replacement.index.TE).toBeGreaterThan(8);
   });
 
-  it('leaves almost every tight end below replacement level', () => {
+  it('puts the startable tight ends back above replacement', () => {
     const replacement = computeReplacementLevels(players, league);
     const positive = players
       .filter((p) => p.position === 'TE')
       .filter((p) => valueOverReplacement(p, replacement) > 0);
-    expect(positive.length).toBeLessThanOrEqual(3);
+    expect(positive.length).toBeGreaterThanOrEqual(6);
   });
 
-  it('does not require a tight end for a legal lineup', () => {
+  it('rejects a lineup with no tight end', () => {
     const roster: PlayerCard[] = [
       mk('qb', 'QB', 400), mk('rb1', 'RB', 300), mk('rb2', 'RB', 250),
       mk('wr1', 'WR', 280), mk('wr2', 'WR', 240), mk('flex', 'RB', 200),
       mk('k', 'K', 140), mk('d', 'DST', 130),
     ];
-    expect(analyzeRoster(roster, league).unfilledSlots).toEqual([]);
-    expect(fillLineup(roster, league.rosterSlots).starters.has('TE')).toBe(false);
+    expect(analyzeRoster(roster, league).unfilledSlots).toContain('TE');
   });
 
-  it('says so explicitly in the positional landscape', () => {
+  it('fills the TE slot when one is on the roster', () => {
+    const roster: PlayerCard[] = [
+      mk('qb', 'QB', 400), mk('rb1', 'RB', 300), mk('rb2', 'RB', 250),
+      mk('wr1', 'WR', 280), mk('wr2', 'WR', 240), mk('te', 'TE', 180),
+      mk('flex', 'RB', 200), mk('k', 'K', 140), mk('d', 'DST', 130),
+    ];
+    const analysis = analyzeRoster(roster, league);
+    expect(analysis.unfilledSlots).toEqual([]);
+    expect(fillLineup(roster, league.rosterSlots).starters.has('TE')).toBe(true);
+  });
+
+  it('no longer prints the zero-TE warning in the landscape', () => {
     const landscape = analyzePositionalLandscape(players, league);
     const te = landscape.find((l) => l.position === 'TE')!;
-    expect(te.note).toMatch(/ZERO tight ends/i);
-    expect(te.note).toMatch(/FLEX/);
+    expect(te.note).not.toMatch(/ZERO tight ends/i);
   });
 });
 
@@ -217,7 +231,7 @@ describe('a full 15-round draft in this league', () => {
     }
   });
 
-  it('does not stockpile tight ends when none are required', () => {
+  it('drafts a tight end now that one is mandatory, and respects the cap of 3', () => {
     const slotLeague = { ...BAY_ISLANDS, draftSlot: 6 };
     let state = createDraftState({
       leagueId: BAY_ISLANDS.id, teamCount: 12, rounds: 15, userSlot: 6,
@@ -238,7 +252,9 @@ describe('a full 15-round draft in this league', () => {
     const roster = state.picks
       .filter((p) => p.draftSlot === 6)
       .map((p) => players.find((x) => x.id === p.playerId)!);
-    expect(roster.filter((p) => p.position === 'TE').length).toBeLessThanOrEqual(1);
+    const tightEnds = roster.filter((p) => p.position === 'TE').length;
+    expect(tightEnds).toBeGreaterThanOrEqual(1);
+    expect(tightEnds).toBeLessThanOrEqual(3);
   });
 });
 

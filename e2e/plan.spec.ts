@@ -32,19 +32,16 @@ test.describe('draft plan', () => {
 
   test('states the league rules that actually change how you draft', async ({ page }) => {
     await page.goto('/plan');
-    await expect(page.getByText(/never required to start a tight end/i)).toBeVisible();
     await expect(page.getByText(/Passing touchdowns are worth 6/i)).toBeVisible();
+    // The zero-TE fact died at the 2026-08-08 party — a mandatory TE was voted
+    // in, so the plan must NOT still preach the old fade.
+    await expect(page.getByText(/never required to start a tight end/i)).toHaveCount(0);
   });
 
-  test('does not tell you to chase the position your league never starts', async ({ page }) => {
+  test('reflects the amended roster: nine starters including a TE', async ({ page }) => {
     await page.goto('/plan');
-    const targets = page.locator('section', { hasText: 'Targets' }).first();
-    if ((await targets.count()) === 0) test.skip(true, 'no targets in this build');
-
-    // Under the wrong league this section filled with tight ends.
-    const text = await targets.innerText();
-    const teLines = text.split('\n').filter((l) => /·\s*TE\b|TE\s*·/.test(l));
-    expect(teLines).toEqual([]);
+    // 9 starters + 6 bench = 15 rounds, shown in the header line.
+    await expect(page.getByText(/15 rounds/)).toBeVisible();
   });
 
   // The two below need a board big enough to analyse. A fixture build ships

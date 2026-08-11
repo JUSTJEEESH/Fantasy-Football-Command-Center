@@ -4,6 +4,28 @@ All notable changes to Fantasy Coach. Newest first.
 
 ## [Unreleased]
 
+### 2026-08-08 — The league changed its defining rule
+
+**Changed**
+- **Bay Islands voted in a mandatory TE** at the pre-draft party (everyone but
+  the commissioner). Encoded: `TE: 1`, 9 starters, bench 7 → 6. The draft slot
+  drawn at the party — **pick 10** — is now the league default, and the draft
+  time is 3:00 PM Central. Season rules gained the $100 entry fee, $1
+  transaction fee after 3 free, third-place refund, and playoff lockout.
+- **The entire TE strategy inverted, by arithmetic.** Under the old rules TEs
+  were −3.7 rounds of overpay (the biggest fade on the board); under the new
+  rules they are **+1.3 rounds underpriced — the best positional edge in the
+  league**, because startable TEs still fall to rounds 9–12 in ADP while this
+  league now forces twelve of them to start. Nothing about tight ends is
+  hardcoded anywhere: the engine, the plan page, the slot planner, and the
+  market analysis all flipped on the config change alone, which was the
+  original design bet and the reason the amendment cost an evening rather
+  than a rewrite.
+- Every test asserting the old world (zero-TE demand, TE fades, blank draft
+  slot, 8 starters, bench 7) was rewritten deliberately rather than deleted:
+  the fade MECHANISM is still proven against a league shaped like the old
+  one, and the new world is asserted against the amended config.
+
 ### 2026-07-25 — The private-league path
 
 **Added**

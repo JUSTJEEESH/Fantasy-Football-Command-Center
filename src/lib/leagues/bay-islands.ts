@@ -3,13 +3,15 @@ import type { League, Position, ScoringSettings } from '@/lib/types';
 // ============================================================================
 // BAY ISLANDS FANTASY — the actual league, encoded exactly.
 //
-// Transcribed from the ESPN league settings page. Several rules differ from the
-// common defaults in ways that genuinely change draft strategy, and each is
-// called out below rather than silently absorbed.
+// Transcribed from the ESPN league settings page, then AMENDED after the
+// 2026-08-08 pre-draft party at the brewery, where the league voted in rule
+// changes (over the commissioner's lone dissent on the tight end). Several
+// rules differ from common defaults in ways that genuinely change draft
+// strategy, and each is called out below rather than silently absorbed.
 //
-// Draft: Snake, 2026-08-30 @ 4:00 PM CST, 2 minutes per pick.
-// Draft order is set manually by the league manager and is not known until the
-// pre-draft party on Aug 8 — see `draftSlot: null` at the bottom.
+// Draft: Snake, 2026-08-30 @ 3:00 PM Central, 2 minutes per pick.
+// Draft order: manually set by the league manager, drawn at the party.
+// The user's seat: PICK 10 — encoded below.
 // ============================================================================
 
 /**
@@ -24,6 +26,10 @@ import type { League, Position, ScoringSettings } from '@/lib/types';
  *  4. **Kickers have no penalty for a missed field goal**, and 60+ yarders pay
  *     6. Kicker scoring is pure upside — which still does not justify drafting
  *     one early, but it does mean leg strength beats accuracy here.
+ *
+ * Re-verified line-by-line against the post-party settings page: the party
+ * changed the ROSTER, not the scoring. Every rate below matches the current
+ * ESPN page.
  */
 export const BAY_ISLANDS_SCORING: ScoringSettings = {
   perStat: {
@@ -98,23 +104,27 @@ export const BAY_ISLANDS_POSITION_LIMITS: Partial<Record<Position, number>> = {
 };
 
 /**
- * THE MOST IMPORTANT LINE IN THIS FILE: `TE` is absent from `rosterSlots`.
+ * THE RULE THAT CHANGED AT THE PARTY: `TE: 1` is now in `rosterSlots`.
  *
- * This league requires **zero** starting tight ends. A TE can only ever reach
- * your lineup through the single FLEX spot, competing against every RB and WR
- * you own. That collapses league-wide TE demand from roughly 12 starters to
- * barely one or two, which means:
+ * Until 2026-08-08 this league required ZERO starting tight ends, and that
+ * absence was its single biggest strategic edge — every TE on the board was
+ * priced for leagues that required one, so the correct play was to draft none
+ * and let eleven other managers overpay. The league then voted a mandatory TE
+ * in (everyone but the commissioner), and the entire calculus inverts:
  *
- *   - replacement level at TE is somewhere around TE2, so almost every tight
- *     end in the pool has negative value over replacement;
- *   - drafting a TE is only correct if he would genuinely out-score the RB or
- *     WR you would otherwise flex — for all but the very best, he will not;
- *   - the tight ends other managers reach for in the middle rounds are, in this
- *     format specifically, close to dead roster spots.
+ *   - twelve TEs now start league-wide every week, so replacement level drops
+ *     from "roughly TE2" to roughly TE12 — most startable TEs are above
+ *     replacement again;
+ *   - the old fade is DEAD. Skipping the position entirely now means starting
+ *     the waiver wire's leftovers at a mandatory slot;
+ *   - a ninth starter comes out of the same 15-round draft, so the bench
+ *     shrank from 7 to 6 — depth is scarcer, which nudges value toward
+ *     starters over lottery tickets.
  *
- * The engine derives all of this on its own from the slot configuration. It is
- * spelled out here because it is the single biggest strategic difference
- * between this league and a normal one, and it is easy to draft on autopilot.
+ * The engine derives all of this from the slot configuration; nothing about
+ * the TE flip is hardcoded anywhere. It is spelled out here because anyone
+ * who prepared under the old rules is carrying a plan that is now exactly
+ * wrong at one position.
  */
 export const BAY_ISLANDS: League = {
   id: 'bay-islands-2026',
@@ -125,20 +135,19 @@ export const BAY_ISLANDS: League = {
   teamCount: 12,
   draftType: 'snake',
 
-  // Unknown until the pre-draft party on Aug 8. Set it in Settings the moment
-  // the order is drawn; everything else is already configured.
-  draftSlot: null,
+  // Drawn at the 2026-08-08 party: the user drafts from seat 10 of 12.
+  draftSlot: 10,
 
   rosterSlots: {
     QB: 1,
     RB: 2,
     WR: 2,
+    TE: 1,        // NEW as of 2026-08-08 — mandatory, voted in at the party
     FLEX: 1,      // RB / WR / TE
     K: 1,
     DST: 1,
-    // TE: deliberately omitted — this league starts zero tight ends.
   },
-  benchSize: 7,   // 15 total roster spots - 8 starters
+  benchSize: 6,   // 15 total roster spots - 9 starters (was 7 before the TE vote)
   irSlots: 1,
 
   scoring: BAY_ISLANDS_SCORING,
@@ -149,12 +158,17 @@ export const BAY_ISLANDS: League = {
 /** Roster size 15 → 15 rounds. */
 export const BAY_ISLANDS_ROUNDS = 15;
 
-/** 2026-08-30 4:00 PM CST (UTC-6). */
-export const BAY_ISLANDS_DRAFT_TIME = '2026-08-30T22:00:00Z';
+/**
+ * 2026-08-30 3:00 PM Central. ESPN's page says "CST", but late August is
+ * daylight time (UTC-5); encoded as the wall-clock time people will actually
+ * show up for.
+ */
+export const BAY_ISLANDS_DRAFT_TIME = '2026-08-30T20:00:00Z';
 
 /**
  * Rules that do not affect draft-day recommendations but are recorded so the
- * in-season features have them when they are built.
+ * in-season features have them when they are built. Money amounts are from the
+ * commissioner's post-party recap.
  */
 export const BAY_ISLANDS_SEASON_RULES = {
   waiverType: 'reverse_standings' as const,
@@ -168,4 +182,14 @@ export const BAY_ISLANDS_SEASON_RULES = {
   lineupLock: 'individual_gametime' as const,
   observesUndroppableList: true,
   timePerPickSeconds: 120,
+
+  // Post-party amendments (2026-08-08):
+  entryFeeUsd: 100,
+  /** $1 per player moved, after the first three free transactions. */
+  transactionFeeUsd: 1,
+  freeTransactions: 3,
+  /** Third place gets the $100 entry fee back. */
+  thirdPlaceRefundUsd: 100,
+  /** Non-playoff teams are locked out of all moves once playoffs start. */
+  playoffLockout: true,
 };

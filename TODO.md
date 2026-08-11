@@ -15,10 +15,9 @@ Islands rules, 600 with bye weeks, all six positions present.
 `pnpm rehearse` drafts all twelve seats against the deployed pack. Latest run:
 all twelve rosters legal and startable.
 
-**Your league (Bay Islands Fantasy) is encoded exactly** — scoring, roster,
-position caps, 15 rounds. Load it in Settings with one tap. Draft slot is left
-blank until your Aug 8 party; the slot planner has a plan for all twelve seats
-in the meantime.
+**Your league (Bay Islands Fantasy) is encoded exactly, post-party rules** —
+mandatory TE, 9 starters, 6 bench, seat 10, 15 rounds, all fees recorded. Load
+it in Settings with one tap; the slot is pre-set.
 
 ---
 
@@ -113,9 +112,9 @@ in the meantime.
 ## Your league ✅
 - [x] Bay Islands scoring encoded exactly (6pt pass TD, 1/20 pass yds, -1 INT
       and fumble, 100yd rush bonus, ESPN DST ladder, no FG-miss penalty)
-- [x] Roster: 8 starters / 7 bench / 15 total, **zero required TE**
+- [x] Roster: 9 starters / 6 bench / 15 total, **mandatory TE since 2026-08-08**
 - [x] Position maximums enforced as hard caps (QB 4, RB 8, WR 8, TE 3, K 3, DST 3)
-- [x] Draft slot may be left unset until the order is drawn on Aug 8
+- [x] Draft slot 10, drawn at the party, encoded as the default
 - [x] Slot planner: simulated draft and plan for all 12 seats
 - [x] Slot-agnostic positional landscape (what's true regardless of your seat)
 - [ ] Re-run the planner after your final ADP refresh, closer to Aug 30
@@ -155,6 +154,6 @@ all of them; none is needed for August 30.
 | --- | --- | --- |
 | ~~**ADP data**~~ | ~~Draft Mode's advice quality depends on it entirely~~ | **Done** — ESPN ADP is fetched every build. Settings → *Use the shipped player board*. CSV import still overrides it. |
 | **Live egress** | Sandbox blocks all data hosts, so adapters are fixture-tested only | Run `pnpm doctor` locally |
-| **Draft slot** | The board cannot be built without it | After Aug 8: Settings → ESPN league → Test connection → tap your team. (Manual entry still works.) |
+| ~~**Draft slot**~~ | ~~The board cannot be built without it~~ | **Done** — seat 10, drawn at the party, encoded as the default. |
 | ~~**Projections**~~ | ~~Without them, points are estimated from ADP~~ | **Done** — ESPN season projections, re-scored under Bay Islands rules. Yardage bonuses are excluded and labelled. |
 | `ANTHROPIC_API_KEY` | Only affects wording, never advice | Optional |
