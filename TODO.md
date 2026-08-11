@@ -5,7 +5,7 @@
 Legend: `[x]` done & tested · `[~]` partial · `[ ]` not started · `[!]` blocked
 
 **Status: the P0 draft path is built and verified end to end**, including with the
-network switched off. 520 unit/integration tests + 52 browser tests passing.
+network switched off. 520 unit/integration tests + 55 browser tests passing.
 
 Real ADP, real projections and real bye weeks now ship in the build — the board
 no longer needs a CSV to exist. Verified against the live deployment: 600
@@ -136,6 +136,7 @@ it in Settings with one tap; the slot is pre-set.
 - [ ] Deployment docs (Vercel + Supabase)
 - [x] `pnpm rehearse` — full 15-round draft, all twelve seats, against the
       deployed pack. Caught two bugs 405 passing tests did not.
+- [x] Draft-day guide page (/guide): a run sheet that checks its own setup state
 - [ ] Airplane-mode rehearsal on a real phone
 
 ---

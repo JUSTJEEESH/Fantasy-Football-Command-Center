@@ -138,6 +138,12 @@ export default function HomePage() {
         <Link href="/settings" className="btn-ghost flex items-center justify-center">
           Settings
         </Link>
+        <Link
+          href="/guide"
+          className="btn-ghost col-span-2 flex items-center justify-center"
+        >
+          Draft-day guide — the whole run sheet
+        </Link>
       </div>
 
       <div className="card">
