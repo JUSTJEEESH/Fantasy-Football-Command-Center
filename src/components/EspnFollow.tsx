@@ -172,28 +172,36 @@ export function EspnFollow({
 
   return (
     <div className="card space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold">Follow ESPN draft</h2>
-          <p className="text-xs text-[var(--muted)]">
-            {following
-              ? `Live — checking every 12s${lastSyncAt ? `, last ${lastSyncAt.toLocaleTimeString()}` : ''}${applied > 0 ? ` · ${applied} picks synced` : ''}`
-              : applied > 0
-                ? `${applied} picks synced${lastSyncAt ? ` · last ${lastSyncAt.toLocaleTimeString()}` : ''}`
-                : 'Records the other teams’ picks for you as they happen.'}
-          </p>
-        </div>
-        <button
-          type="button"
-          className={following ? 'btn-primary shrink-0' : 'btn-ghost shrink-0'}
-          onClick={() => {
-            setMessage(null);
-            setFollowing((f) => !f);
-          }}
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-semibold">Sync picks from ESPN</h2>
+        <span className="text-xs text-[var(--muted)]">
+          {applied > 0
+            ? `${applied} synced${lastSyncAt ? ` · ${lastSyncAt.toLocaleTimeString()}` : ''}`
+            : ''}
+        </span>
+      </div>
+
+      {/* The two-tab loop, in the order it happens. Step 1 opens (or re-opens)
+          the data page in its own tab; step 2 lands everything copied there.
+          This is the primary control because it is the one that works with the
+          league private — which this league permanently is. */}
+      <div className="grid grid-cols-2 gap-2">
+        <a
+          className="btn-ghost flex items-center justify-center text-sm"
+          href={snapshotUrl(league.espnLeagueId, league.season)}
+          target="_blank"
+          rel="noreferrer"
         >
-          {following ? 'Following' : 'Follow'}
+          1 · Open data page
+        </a>
+        <button type="button" className="btn-primary" onClick={handleClipboard}>
+          2 · Sync from clipboard
         </button>
       </div>
+      <p className="text-xs text-[var(--muted)]">
+        On the data page: refresh, select all (Ctrl/Cmd+A), copy (Ctrl/Cmd+C), come
+        back, tap sync. Every pick made so far lands at once.
+      </p>
 
       {message && (
         <p className="rounded-lg bg-[var(--warn)]/10 px-3 py-2 text-sm text-[var(--warn)]">
@@ -201,36 +209,34 @@ export function EspnFollow({
         </p>
       )}
 
-      {/* The private-league path: the app cannot carry your ESPN login, but
-          your own logged-in tab can. Open the data link, copy, paste — every
-          pick made so far lands at once. */}
-      <button
-        type="button"
-        onClick={() => setPasteOpen((o) => !o)}
-        className="text-xs text-[var(--muted)] underline underline-offset-2"
-      >
-        {pasteOpen ? 'Hide paste sync' : 'League private? Paste to sync'}
-      </button>
+      <div className="flex items-center gap-4 text-xs">
+        <button
+          type="button"
+          onClick={() => setPasteOpen((o) => !o)}
+          className="text-[var(--muted)] underline underline-offset-2"
+        >
+          {pasteOpen ? 'Hide paste box' : 'Paste manually instead'}
+        </button>
+        {/* Auto-follow polls ESPN directly. It can only work if the league is
+            publicly viewable — this league is not, so it stays out of the way
+            rather than leading the card with a button that cannot succeed. */}
+        <button
+          type="button"
+          onClick={() => {
+            setMessage(null);
+            setFollowing((f) => !f);
+          }}
+          className={`underline underline-offset-2 ${following ? 'text-[var(--accent)]' : 'text-[var(--muted)]'}`}
+        >
+          {following ? 'Auto-follow: on' : 'Auto-follow (public leagues only)'}
+        </button>
+      </div>
+
       {pasteOpen && (
         <div className="space-y-2 text-xs text-[var(--muted)]">
-          <p>
-            In a tab where you are logged in to ESPN,{' '}
-            <a
-              className="text-sky-400 underline"
-              href={snapshotUrl(league.espnLeagueId, league.season)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              open the league data page
-            </a>
-            , copy everything, paste here. All picks made so far sync in one go.
-          </p>
-          <button type="button" className="btn-primary w-full" onClick={handleClipboard}>
-            Sync from clipboard
-          </button>
           <textarea
             className="input h-20 w-full font-mono text-[11px]"
-            placeholder='…or paste here. Starts with {"draftDetail": …'
+            placeholder={'Paste the copied league data here. Starts with {'}
             value={pasteText}
             onChange={(e) => setPasteText(e.target.value)}
           />

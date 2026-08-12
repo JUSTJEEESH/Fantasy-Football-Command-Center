@@ -125,11 +125,11 @@ test.describe('following the draft live', () => {
     await page.getByRole('button', { name: /^Save league$/i }).click();
 
     await page.goto('/draft');
-    await page.getByRole('button', { name: 'Follow', exact: true }).click();
+    await page.getByRole('button', { name: /Auto-follow/ }).click();
 
     // Both picks arrive without a single tap, and the clock advances to
     // pick 3 — which is ours.
-    await expect(page.getByText(/2 picks synced/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/2 synced/i)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/pick 3/i).first()).toBeVisible();
   });
 
@@ -170,7 +170,7 @@ test.describe('following the draft live', () => {
     await page.getByRole('button', { name: /^Save league$/i }).click();
 
     await page.goto('/draft');
-    await page.getByRole('button', { name: 'Follow', exact: true }).click();
+    await page.getByRole('button', { name: /Auto-follow/ }).click();
 
     // Pick 1 applies; pick 2 halts with instructions — not a guess, not a
     // crash, not a silent skip that would corrupt the snake math.
@@ -193,7 +193,7 @@ test.describe('following the draft live', () => {
 
     await page.goto('/draft');
     await expect(page.getByText(/board has no ESPN player ids/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Follow', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Auto-follow/ })).toHaveCount(0);
   });
 });
 
@@ -204,7 +204,7 @@ test.describe('the private-league paste path', () => {
     await page.getByPlaceholder('e.g. 1234567').fill('1234567');
     await page.getByText('League private? Paste it instead').click();
     await page
-      .getByPlaceholder(/Starts with/)
+      .getByPlaceholder(/Paste the copied league data|Starts with/)
       .fill(JSON.stringify(leagueBody([])));
     await page.getByRole('button', { name: /Import pasted league/i }).click();
 
@@ -216,7 +216,7 @@ test.describe('the private-league paste path', () => {
   test('explains a pasted web page instead of saying "invalid"', async ({ page }) => {
     await buildBoard(page);
     await page.getByText('League private? Paste it instead').click();
-    await page.getByPlaceholder(/Starts with/).fill('<!DOCTYPE html><html></html>');
+    await page.getByPlaceholder(/Paste the copied league data|Starts with/).fill('<!DOCTYPE html><html></html>');
     await page.getByRole('button', { name: /Import pasted league/i }).click();
     await expect(page.getByText(/web page, not league data/i)).toBeVisible();
   });
@@ -243,9 +243,9 @@ test.describe('the private-league paste path', () => {
     await page.getByRole('button', { name: /^Save league$/i }).click();
 
     await page.goto('/draft');
-    await page.getByText('League private? Paste to sync').click();
+    await page.getByRole('button', { name: /Paste manually instead/ }).click();
     await page
-      .getByPlaceholder(/Starts with/)
+      .getByPlaceholder(/Paste the copied league data|Starts with/)
       .fill(
         JSON.stringify(
           leagueBody([
@@ -257,7 +257,7 @@ test.describe('the private-league paste path', () => {
     await page.getByRole('button', { name: /Sync pasted picks/i }).click();
 
     // Both picks land; the clock is on pick 3 — ours.
-    await expect(page.getByText(/2 picks synced/i)).toBeVisible();
+    await expect(page.getByText(/2 synced/i)).toBeVisible();
     await expect(page.getByText(/pick 3/i).first()).toBeVisible();
   });
 
@@ -286,15 +286,13 @@ test.describe('the private-league paste path', () => {
     await page.getByRole('button', { name: /^Save league$/i }).click();
 
     await page.goto('/draft');
-    await page.getByText('League private? Paste to sync').click();
-
     await page.evaluate(
       (body) => navigator.clipboard.writeText(body),
       JSON.stringify(leagueBody([{ overallPickNumber: 1, playerId: 111, teamId: 4 }])),
     );
-    await page.getByRole('button', { name: 'Sync from clipboard' }).click();
+    await page.getByRole('button', { name: /Sync from clipboard/ }).click();
 
-    await expect(page.getByText(/1 picks synced/i)).toBeVisible();
+    await expect(page.getByText(/1 synced/i)).toBeVisible();
   });
 
   test('an empty clipboard is explained, not swallowed', async ({ page, context }) => {
@@ -318,9 +316,8 @@ test.describe('the private-league paste path', () => {
     await page.getByRole('button', { name: /^Save league$/i }).click();
 
     await page.goto('/draft');
-    await page.getByText('League private? Paste to sync').click();
     await page.evaluate(() => navigator.clipboard.writeText(''));
-    await page.getByRole('button', { name: 'Sync from clipboard' }).click();
+    await page.getByRole('button', { name: /Sync from clipboard/ }).click();
     await expect(page.getByText(/clipboard is empty/i)).toBeVisible();
   });
 });

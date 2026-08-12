@@ -79,7 +79,7 @@ export default function GuidePage() {
           ['Open the app, go to Settings → Use the shipped player board once more', 'One tap re-pulls data as of ~3 hours ago — catches any morning injury news. Skip if the wifi is hopeless; last night’s board is fine.'],
           ['Open the Draft tab', 'The war room. From this moment the app needs no internet at all.'],
           ['Put the ESPN draft room on your phone or a second window', 'You still make your actual picks in ESPN like everyone else. This app is the brain beside it.'],
-          ['Open the league data link in one more tab and leave it open', 'War room → “League private? Paste to sync” has the link. This tab is your sync source all night — refresh it, copy, one tap.'],
+          ['Tap “1 · Open data page” in the war room, leave that tab open', 'That tab is your sync source all night. You are logged in to ESPN there, so it works with the league private.'],
         ]}
       />
 
@@ -87,7 +87,7 @@ export default function GuidePage() {
         title="During the draft — the loop"
         steps={[
           ['When anyone else picks: record it', 'Two taps — find the player, tap draft. Or say it out loud with the mic. The board, deadlines and advice update instantly.'],
-          ['Fallen behind? Refresh the ESPN data tab, copy all, tap “Sync from clipboard”', 'Keep the league data link open in a logged-in ESPN tab all night. Refresh, Ctrl/Cmd+A, Ctrl/Cmd+C, switch back, one tap — every pick made so far lands at once. Works with the league fully private.'],
+          ['To catch up: data tab → refresh, Ctrl/Cmd+A, Ctrl/Cmd+C → war room → “2 · Sync from clipboard”', 'Every pick made so far lands at once. Do it before your pick, or whenever you fall behind — no need after every single pick.'],
           ['When you are on the clock: read the Take card', 'The big name is the pick; the reasons underneath are why. Alternatives are listed if the room has you doubting.'],
           ['Make that pick in ESPN, then record it here', 'The app never talks to ESPN for you — you stay in control of your actual pick.'],
           ['Wrong entry? Undo or “correct pick N”', 'Nothing is ever stuck. History is editable until it matches the room.'],

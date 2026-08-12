@@ -4,6 +4,18 @@ All notable changes to Fantasy Coach. Newest first.
 
 ## [Unreleased]
 
+### 2026-08-12 — The sync card leads with the loop that works
+
+**Changed**
+- The war room's ESPN card led with an auto-follow button that can never work
+  for this league (permanently private) and hid the sync that does behind a
+  toggle. Inverted: the card is now titled "Sync picks from ESPN" and leads
+  with the actual two-step loop as two big adjacent buttons — **1 · Open data
+  page** and **2 · Sync from clipboard** — with the copy keystrokes written
+  between them. Auto-follow survives as a small link labelled "(public leagues
+  only)"; the paste box sits behind "Paste manually instead". Under a
+  two-minute pick clock, the thing you tap should be the first thing you see.
+
 ### 2026-08-12 — One-click sync for the locked-down league
 
 **Changed**
