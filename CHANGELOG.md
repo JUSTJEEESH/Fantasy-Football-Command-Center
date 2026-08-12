@@ -4,6 +4,20 @@ All notable changes to Fantasy Coach. Newest first.
 
 ## [Unreleased]
 
+### 2026-08-12 — One-click sync for the locked-down league
+
+**Changed**
+- The commissioner ruled: the league stays private, permanently. That closes
+  the automatic 12-second polling for good — a browser cannot carry the user's
+  ESPN login, and no extension, MCP, or agent changes that rule of the web.
+  The paste path was always the private-league answer; it is now one click:
+  **Sync from clipboard** reads the copied league JSON directly
+  (`navigator.clipboard.readText()`), so mid-draft catch-up is refresh → copy
+  → one tap. A clipboard-permission refusal or an empty clipboard is explained
+  in words, with the paste box as the stated fallback. Same button on the
+  Settings import. The draft-day guide now scripts the ESPN-data-tab workflow
+  explicitly.
+
 ### 2026-08-08 — The league changed its defining rule
 
 **Changed**

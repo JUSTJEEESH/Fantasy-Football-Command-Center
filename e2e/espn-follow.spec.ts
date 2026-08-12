@@ -260,4 +260,67 @@ test.describe('the private-league paste path', () => {
     await expect(page.getByText(/2 picks synced/i)).toBeVisible();
     await expect(page.getByText(/pick 3/i).first()).toBeVisible();
   });
+
+  test('one click syncs straight from the clipboard', async ({ page, context }) => {
+    // The paste loop runs against a two-minute pick clock; the clipboard
+    // button collapses it to a single tap after the copy.
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+    const shipped = {
+      generatedAt: new Date().toISOString(),
+      ok: true,
+      sources: [{ key: 'sleeper', name: 'Sleeper', ok: true, itemCount: 2 }],
+      season: 2026,
+      players: [
+        { id: 'RB-a', name: 'Alpha Back', position: 'RB', team: 'DET', adp: 1.5, espnId: 111 },
+        { id: 'RB-b', name: 'Bravo Back', position: 'RB', team: 'ATL', adp: 2.5, espnId: 222 },
+      ],
+    };
+    await page.route('**/data/players.json', (route: Route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(shipped) }),
+    );
+
+    await buildBoard(page);
+    await page.getByLabel('Your draft slot', { exact: true }).fill('3');
+    await page.getByPlaceholder('e.g. 1234567').fill('1234567');
+    await page.getByRole('button', { name: /^Save league$/i }).click();
+
+    await page.goto('/draft');
+    await page.getByText('League private? Paste to sync').click();
+
+    await page.evaluate(
+      (body) => navigator.clipboard.writeText(body),
+      JSON.stringify(leagueBody([{ overallPickNumber: 1, playerId: 111, teamId: 4 }])),
+    );
+    await page.getByRole('button', { name: 'Sync from clipboard' }).click();
+
+    await expect(page.getByText(/1 picks synced/i)).toBeVisible();
+  });
+
+  test('an empty clipboard is explained, not swallowed', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    // The paste toggle only exists on a board with ESPN ids.
+    const shipped = {
+      generatedAt: new Date().toISOString(),
+      ok: true,
+      sources: [{ key: 'sleeper', name: 'Sleeper', ok: true, itemCount: 1 }],
+      season: 2026,
+      players: [
+        { id: 'RB-a', name: 'Alpha Back', position: 'RB', team: 'DET', adp: 1.5, espnId: 111 },
+      ],
+    };
+    await page.route('**/data/players.json', (route: Route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(shipped) }),
+    );
+    await buildBoard(page);
+    await page.getByLabel('Your draft slot', { exact: true }).fill('3');
+    await page.getByPlaceholder('e.g. 1234567').fill('1234567');
+    await page.getByRole('button', { name: /^Save league$/i }).click();
+
+    await page.goto('/draft');
+    await page.getByText('League private? Paste to sync').click();
+    await page.evaluate(() => navigator.clipboard.writeText(''));
+    await page.getByRole('button', { name: 'Sync from clipboard' }).click();
+    await expect(page.getByText(/clipboard is empty/i)).toBeVisible();
+  });
 });

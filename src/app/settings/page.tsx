@@ -277,6 +277,27 @@ export default function SettingsPage() {
     applySnapshotResult(parsePastedSnapshot(pasteText));
   };
 
+  /** One-click variant: read the copied league JSON straight off the clipboard. */
+  const handleClipboardImport = async () => {
+    setEspnSnapshot(null);
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        setEspnStatus({
+          kind: 'error',
+          text: 'The clipboard is empty. Copy the league data page first, then tap again.',
+        });
+        return;
+      }
+      applySnapshotResult(parsePastedSnapshot(text));
+    } catch {
+      setEspnStatus({
+        kind: 'error',
+        text: 'The browser refused clipboard access. Paste into the box below instead — same result.',
+      });
+    }
+  };
+
   /** Tap your own team in the fetched order → your slot is set and saved. */
   const handlePickMyTeam = (teamId: number) => {
     if (!espnSnapshot) return;
@@ -546,9 +567,12 @@ export default function SettingsPage() {
               league data only — no password, no cookies, and it never leaves this
               device.
             </p>
+            <button type="button" className="btn-primary w-full" onClick={handleClipboardImport}>
+              Import from clipboard
+            </button>
             <textarea
               className="input h-24 w-full font-mono text-[11px]"
-              placeholder='Starts with {"draftDetail": …'
+              placeholder='…or paste here. Starts with {"draftDetail": …'
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
             />

@@ -90,7 +90,8 @@ it in Settings with one tap; the slot is pre-set.
 - [x] Private-league paste path: draft order and live picks via copy-paste from
       the user's own logged-in tab — no visibility change, no credentials
 - [ ] Try the paste flow against the real league (open the link from Settings
-      while logged in to ESPN, paste, confirm the order imports)
+      while logged in to ESPN, copy, "Import from clipboard" — confirm the
+      order imports; the league staying private is fine and permanent)
 - [x] Briefing leads with news about players in your draft range, ADP-stamped
 - [x] ADP trend series: each deploy snapshots daily ADP and republishes the
       history; plan page shows week-over-week market movers once 3+ days accrue

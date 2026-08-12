@@ -96,18 +96,37 @@ export function EspnFollow({
     return applySnapshot(result.snapshot);
   }, [league.espnLeagueId, league.season, applySnapshot]);
 
-  const handlePaste = () => {
-    const result = parsePastedSnapshot(pasteText);
+  const handlePasteText = (text: string) => {
+    const result = parsePastedSnapshot(text);
     if (!result.ok) {
       setMessage(result.detail);
       return;
     }
-    const before = stateRef.current.picks.length;
     applySnapshot(result.snapshot);
-    // Applying mutates via dispatch, which lands next render; report from the
-    // plan's own arithmetic instead of re-reading stale state.
-    const caughtUp = result.snapshot.picks.length - before;
-    if (caughtUp >= 0) setPasteText('');
+    setPasteText('');
+  };
+
+  /**
+   * One-click sync: read the league JSON straight off the clipboard.
+   *
+   * This exists because the paste loop runs against a two-minute pick clock.
+   * With it, catching up is: refresh the ESPN tab, Ctrl+A Ctrl+C, switch back,
+   * ONE click. The browser will ask permission the first time; a refusal falls
+   * back to the textarea below, stated rather than silent.
+   */
+  const handleClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        setMessage('The clipboard is empty. Copy the league data page first, then tap again.');
+        return;
+      }
+      handlePasteText(text);
+    } catch {
+      setMessage(
+        'The browser refused clipboard access. Paste into the box below instead — same result.',
+      );
+    }
   };
 
   useEffect(() => {
@@ -206,13 +225,20 @@ export function EspnFollow({
             </a>
             , copy everything, paste here. All picks made so far sync in one go.
           </p>
+          <button type="button" className="btn-primary w-full" onClick={handleClipboard}>
+            Sync from clipboard
+          </button>
           <textarea
             className="input h-20 w-full font-mono text-[11px]"
-            placeholder='Starts with {"draftDetail": …'
+            placeholder='…or paste here. Starts with {"draftDetail": …'
             value={pasteText}
             onChange={(e) => setPasteText(e.target.value)}
           />
-          <button type="button" className="btn-ghost w-full" onClick={handlePaste}>
+          <button
+            type="button"
+            className="btn-ghost w-full"
+            onClick={() => handlePasteText(pasteText)}
+          >
             Sync pasted picks
           </button>
         </div>
