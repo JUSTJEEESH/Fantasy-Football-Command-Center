@@ -40,7 +40,7 @@ export function EspnFollow({
   dispatch: (action: DraftAction) => void;
 }) {
   const [following, setFollowing] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ tone: 'ok' | 'warn'; text: string } | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
   const [applied, setApplied] = useState(0);
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -59,24 +59,38 @@ export function EspnFollow({
 
       switch (plan.status) {
         case 'in-sync':
-          setMessage(null);
+          // Success MUST speak. Before the draft this case is the practice
+          // sync — the moment the user is checking whether the whole chain
+          // works — and a silent success reads as "nothing happened".
+          setMessage({
+            tone: 'ok',
+            text:
+              snapshot.picks.length === 0
+                ? '✓ Connection works. ESPN shows no picks yet — you are in sync and ready.'
+                : `✓ In sync — all ${snapshot.picks.length} ESPN picks are on your board.`,
+          });
           return 'ok';
         case 'apply':
           for (const action of plan.actions) dispatch(action);
           setApplied((n) => n + plan.count);
-          setMessage(null);
+          setMessage({
+            tone: 'ok',
+            text: `✓ ${plan.count} pick${plan.count === 1 ? '' : 's'} landed — board is current.`,
+          });
           return 'ok';
         case 'unmatched':
           for (const action of plan.actions) dispatch(action);
           setApplied((n) => n + plan.count);
-          setMessage(
-            `ESPN pick ${plan.overallPick} is a player not on your board ` +
+          setMessage({
+            tone: 'warn',
+            text:
+              `ESPN pick ${plan.overallPick} is a player not on your board ` +
               `(ESPN id ${plan.espnPlayerId}). Record that pick manually — sync will ` +
               'resume on its own once the pick exists locally.',
-          );
+          });
           return 'ok';
         case 'conflict':
-          setMessage(plan.detail);
+          setMessage({ tone: 'warn', text: plan.detail });
           return 'stop';
       }
     },
@@ -89,7 +103,7 @@ export function EspnFollow({
 
     const result = await fetchEspnLeague(leagueId, league.season);
     if (!result.ok) {
-      setMessage(result.detail);
+      setMessage({ tone: 'warn', text: result.detail });
       // A blocked or private league will not fix itself between polls.
       return result.kind === 'blocked' ? 'ok' : 'stop';
     }
@@ -99,7 +113,7 @@ export function EspnFollow({
   const handlePasteText = (text: string) => {
     const result = parsePastedSnapshot(text);
     if (!result.ok) {
-      setMessage(result.detail);
+      setMessage({ tone: 'warn', text: result.detail });
       return;
     }
     applySnapshot(result.snapshot);
@@ -118,14 +132,18 @@ export function EspnFollow({
     try {
       const text = await navigator.clipboard.readText();
       if (!text.trim()) {
-        setMessage('The clipboard is empty. Copy the league data page first, then tap again.');
+        setMessage({
+          tone: 'warn',
+          text: 'The clipboard is empty. Copy the league data page first, then tap again.',
+        });
         return;
       }
       handlePasteText(text);
     } catch {
-      setMessage(
-        'The browser refused clipboard access. Paste into the box below instead — same result.',
-      );
+      setMessage({
+        tone: 'warn',
+        text: 'The browser refused clipboard access. Paste into the box below instead — same result.',
+      });
     }
   };
 
@@ -204,8 +222,14 @@ export function EspnFollow({
       </p>
 
       {message && (
-        <p className="rounded-lg bg-[var(--warn)]/10 px-3 py-2 text-sm text-[var(--warn)]">
-          {message}
+        <p
+          className={`rounded-lg px-3 py-2 text-sm ${
+            message.tone === 'ok'
+              ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
+              : 'bg-[var(--warn)]/10 text-[var(--warn)]'
+          }`}
+        >
+          {message.text}
         </p>
       )}
 

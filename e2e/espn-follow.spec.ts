@@ -320,4 +320,41 @@ test.describe('the private-league paste path', () => {
     await page.getByRole('button', { name: /Sync from clipboard/ }).click();
     await expect(page.getByText(/clipboard is empty/i)).toBeVisible();
   });
+
+  test('the practice sync before any picks says the connection works', async ({
+    page,
+    context,
+  }) => {
+    // The exact draft-day moment: user at the bar at 2 PM, zero picks made,
+    // doing one sync to confirm the chain. Silence here reads as failure —
+    // success must say so in words.
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    const shipped = {
+      generatedAt: new Date().toISOString(),
+      ok: true,
+      sources: [{ key: 'sleeper', name: 'Sleeper', ok: true, itemCount: 1 }],
+      season: 2026,
+      players: [
+        { id: 'RB-a', name: 'Alpha Back', position: 'RB', team: 'DET', adp: 1.5, espnId: 111 },
+      ],
+    };
+    await page.route('**/data/players.json', (route: Route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(shipped) }),
+    );
+
+    await buildBoard(page);
+    await page.getByLabel('Your draft slot', { exact: true }).fill('10');
+    await page.getByPlaceholder('e.g. 1234567').fill('1234567');
+    await page.getByRole('button', { name: /^Save league$/i }).click();
+
+    await page.goto('/draft');
+    await page.evaluate(
+      (body) => navigator.clipboard.writeText(body),
+      JSON.stringify(leagueBody([])),
+    );
+    await page.getByRole('button', { name: /Sync from clipboard/ }).click();
+
+    await expect(page.getByText(/Connection works/i)).toBeVisible();
+    await expect(page.getByText(/in sync and ready/i)).toBeVisible();
+  });
 });
